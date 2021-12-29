@@ -20,8 +20,11 @@ export default {
         HomeDescriptionPlugin: require('./plugins/HomeDescription').default,
         MadeWithLovePlugin: require('./plugins/MadeWithLove').default,
         MailingListsPlugin: require('./plugins/MailingLists').default,
+        MapHeaderPlugin: require('./plugins/MapHeader').default,
         MapTypePlugin: require('./plugins/MapType').default,
         NavMenu: require('./plugins/NavMenu').default,
+        NearbyPlugin: require('./plugins/Nearby').default,
+        RoutingPlugin: require('./plugins/Routing').default,
         // framework plugins
         AddGroupPlugin: require('../plugins/AddGroup').default,
         AnnotationsPlugin: require('../plugins/Annotations').default,

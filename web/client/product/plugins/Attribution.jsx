@@ -8,7 +8,7 @@
 import React from 'react';
 
 import PropTypes from 'prop-types';
-import src from '../assets/img/mapstorelogo.png';
+import src from '../assets/img/logo_longdo_map.png';
 import assign from 'object-assign';
 
 class Attribution extends React.Component {
@@ -46,8 +46,8 @@ export default {
         NavMenu: {
             tool: (props) => ({
                 position: 0,
-                label: props.label || 'GeoSolutions',
-                href: props.href || 'https://www.geosolutionsgroup.com/',
+                label: props.label || 'Longdo Map',
+                href: props.href || 'https://map.longdo.com/',
                 img: props.src && <img className="customer-logo" src={props.src} height="30" /> || <img className="customer-logo" src={src} height="30" />,
                 logo: true
             })

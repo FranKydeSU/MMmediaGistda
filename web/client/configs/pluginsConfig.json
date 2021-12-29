@@ -273,6 +273,24 @@
       ]
     },
     {
+      "name": "Neayby",
+      "glyph": "search",
+      "title": "plugins.Nearby.title",
+      "description": "plugins.Nearby.description",
+      "dependencies": [
+        "BurgerMenu"
+      ]
+    },
+    {
+      "name": "Routing",
+      "glyph": "search",
+      "title": "plugins.Routing.title",
+      "description": "plugins.Routing.description",
+      "dependencies": [
+        "BurgerMenu"
+      ]
+    },
+    {
       "name": "Print",
       "glyph": "print",
       "title": "plugins.Print.title",
@@ -373,6 +391,9 @@
     },
     {
       "name": "Swipe"
+    },
+    {
+      "name": "MapHeader"
     },
     {
       "name": "SearchByBookmark"

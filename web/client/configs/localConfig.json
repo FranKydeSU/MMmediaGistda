@@ -80,8 +80,26 @@
                 "isNew": true,
                 "autoload": false
             },
-            "selectedService": "gs_stable_csw",
+            "selectedService": "geonode_longdo_com_wms",
             "services": {
+              "geonode_longdo_com_wms": {
+                "url": "https://geonode.longdo.com/geoserver/wms",
+                "type": "wms",
+                "title": "Longdo GeoServer WMS",
+                "autoload": true
+              },
+              "geonode_longdo_com_wmts": {
+                "url": "https://geonode.longdo.com/geoserver/gwc/service/wmts",
+                "type": "wms",
+                "title": "Longdo GeoServer WMTS",
+                "autoload": false
+              },
+              "ms_simplethai_net_wms": {
+                "url": "https://ms.simplethai.net/mapproxy/service",
+                "type": "wms",
+                "title": "ms.simplethai.net",
+                "autoload": true
+              },
               "gs_stable_csw": {
                 "url": "https://gs-stable.geo-solutions.it/geoserver/csw",
                 "type": "csw",
@@ -108,42 +126,60 @@
                 "titleMsgId": "defaultMapBackgroundsServiceTitle",
                 "autoload": true,
                 "backgrounds": [{
-                    "type": "osm",
-                    "title": "Open Street Map",
-                    "name": "mapnik",
-                    "source": "osm",
-                    "group": "background"
-                }, {
-                    "type": "tileprovider",
-                    "title": "NASAGIBS Night 2012",
-                    "provider": "NASAGIBS.ViirsEarthAtNight2012",
-                    "name": "Night2012",
-                    "source": "nasagibs",
-                    "group": "background"
-                }, {
-                    "type": "tileprovider",
-                    "title": "OpenTopoMap",
-                    "provider": "OpenTopoMap",
-                    "name": "OpenTopoMap",
-                    "source": "OpenTopoMap",
-                    "group": "background"
-                }, {
-                    "format": "image/jpeg",
-                    "group": "background",
-                    "name": "s2cloudless:s2cloudless",
-                    "opacity": 1,
-                    "title": "Sentinel 2 Cloudless",
-                    "type": "wms",
-                    "url": "https://1maps.geo-solutions.it/geoserver/wms",
-                    "source": "s2cloudless",
-                    "singleTile": false
-                }, {
-                    "source": "ol",
-                    "group": "background",
-                    "title": "Empty Background",
-                    "fixed": true,
-                    "type": "empty"
-                }]
+                  "type": "osm",
+                  "title": "Open Street Map",
+                  "name": "mapnik",
+                  "source": "osm",
+                  "group": "background"
+              }, {
+                  "type": "google",
+                  "title": "Google ROADMAP",
+                  "name": "ROADMAP",
+                  "source": "google",
+                  "group": "background"
+              }, {
+                  "type": "google",
+                  "title": "Google SATELLITE",
+                  "name": "SATELLITE",
+                  "source": "google",
+                  "group": "background"
+              }, {
+                  "type": "google",
+                  "title": "Google HYBRID",
+                  "name": "HYBRID",
+                  "source": "google",
+                  "group": "background"
+              }, {
+                  "type": "tileprovider",
+                  "title": "NASAGIBS Night 2012",
+                  "provider": "NASAGIBS.ViirsEarthAtNight2012",
+                  "name": "Night2012",
+                  "source": "nasagibs",
+                  "group": "background"
+              }, {
+                  "type": "tileprovider",
+                  "title": "OpenTopoMap",
+                  "provider": "OpenTopoMap",
+                  "name": "OpenTopoMap",
+                  "source": "OpenTopoMap",
+                  "group": "background"
+              }, {
+                  "format": "image/jpeg",
+                  "group": "background",
+                  "name": "s2cloudless:s2cloudless",
+                  "opacity": 1,
+                  "title": "Sentinel 2 Cloudless",
+                  "type": "wms",
+                  "url": "https://1maps.geo-solutions.it/geoserver/wms",
+                  "source": "s2cloudless",
+                  "singleTile": false
+              }, {
+                  "source": "ol",
+                  "group": "background",
+                  "title": "Empty Background",
+                  "fixed": true,
+                  "type": "empty"
+              }]
               }
             }
           }
@@ -281,7 +317,7 @@
             },
             "FeedbackMask"
         ],
-        "desktop": ["Details",
+        "desktop": ["Details", "MapHeader",
           {
             "name": "Map",
             "cfg": {
@@ -477,7 +513,9 @@
             "Timeline",
             "Playback",
             "FeedbackMask",
-            "StyleEditor"
+            "StyleEditor",
+            "Nearby",
+            "Routing"
         ],
         "embedded": ["Details", {
                 "name": "Map",
@@ -607,7 +645,7 @@
                 "enableContextManager": true
             }
         }, "Login","Language", "NavMenu", "Attribution", "ScrollTop", "Notifications"],
-        "maps": ["HomeDescription", "Fork", "MapSearch", "CreateNewMap", "FeaturedMaps", "ContentTabs",
+        "maps": ["HomeDescription", "MapSearch", "CreateNewMap", "FeaturedMaps", "ContentTabs",
 
           {
             "name": "Maps",
@@ -648,11 +686,11 @@
               "fluid": true
             }
           }
-          , "MailingLists", "Footer", {
+          , "Footer", {
           "name": "Cookie",
           "cfg": {
-            "externalCookieUrl" : "",
-            "declineUrl" : "http://www.google.com"
+            "externalCookieUrl" : "https://www.longdo.com/privacy",
+            "declineUrl" : "https://www.longdo.com"
           }
         }],
         "dashboard": [{
@@ -687,20 +725,21 @@
           "cfg": {
             "selectedService": "GeoSolutions GeoServer CSW",
             "services": {
-              "GeoSolutions GeoServer CSW": {
-                "url": "https://gs-stable.geo-solutions.it/geoserver/csw",
-                "type": "csw",
-                "title": "GeoSolutions GeoServer CSW"
-              },
-              "GeoSolutions GeoServer WMS": {
-                "url": "https://gs-stable.geo-solutions.it/geoserver/wms",
+              "geonode_longdo_com_wms": {
+                "url": "https://geonode.longdo.com/geoserver/wms",
                 "type": "wms",
-                "title": "GeoSolutions GeoServer WMS"
+                "title": "Longdo GeoServer WMS"
               },
-              "GeoSolutions GeoServer WMTS": {
-                "url": "https://gs-stable.geo-solutions.it/geoserver/gwc/service/wmts",
+              "geonode_longdo_com_wmts": {
+                "url": "https://geonode.longdo.com/geoserver/gwc/service/wmts",
                 "type": "wmts",
-                "title": "GeoSolutions GeoServer WMTS"
+                "title": "Longdo GeoServer WMTS"
+              },
+              "ms_simplethai_net_wms": {
+                "url": "https://ms.simplethai.net/mapproxy/service",
+                "type": "wms",
+                "title": "ms.simplethai.net",
+                "autoload": true
               }
             },
             "containerPosition": "columns"

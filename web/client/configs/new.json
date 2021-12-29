@@ -19,6 +19,30 @@
         "visibility": true
 			},
       {
+        "type": "google",
+        "title": "Google ROADMAP",
+        "name": "ROADMAP",
+        "source": "google",
+        "group": "background",
+        "visibility": false
+      },
+      {
+        "type": "google",
+        "title": "Google SATELLITE",
+        "name": "SATELLITE",
+        "source": "google",
+        "group": "background",
+        "visibility": false
+      },
+      {
+        "type": "google",
+        "title": "Google HYBRID",
+        "name": "HYBRID",
+        "source": "google",
+        "group": "background",
+        "visibility": false
+      },
+      {
         "type": "tileprovider",
         "title": "NASAGIBS Night 2012",
         "provider": "NASAGIBS.ViirsEarthAtNight2012",
