@@ -124,6 +124,11 @@ export default {
                     enabled: false,
                     seeMore: false
                 }
+            },
+            theme: {
+                selectedTheme: {
+                    id: 'longdo'
+                }
             }
         },
         mobile: {

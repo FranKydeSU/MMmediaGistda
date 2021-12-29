@@ -1,0 +1,42 @@
+#page-dashboard {
+    .react-grid-Main {
+        background-color: #353535;
+
+        .react-grid-Grid {
+            border: 1px solid #444444;
+
+            .react-grid-Header {
+                background-color: #353535;
+
+                .react-grid-HeaderRow {
+                    .react-grid-HeaderCell {
+                        background-color: #353535;
+                        border-right: 1px solid #444444;
+                        border-bottom: 1px solid #444444;
+                        color: #eeeeee;
+                    }
+                }
+            }
+        }
+
+        .react-grid-Row {
+            &:hover {
+                .react-grid-Cell {
+                    color: #ffc107;
+                    background-color: darken(#353535, 5%) !important;
+                }
+            }
+
+            .react-grid-Cell {
+                background-color: #353535;
+                border-right: 1px solid #444444;
+                border-bottom: 1px solid #444444;
+                color: #eeeeee;
+            }
+        }
+    }
+
+    .react-grid-Canvas {
+        background-color: #353535;
+    }
+}
