@@ -150,3 +150,29 @@ html, body, #container, .fill {
 .mapstore-right-panel #mapstore-identify-revgeocoder {
     padding: 15px;
 }
+
+#mapstore-map-header {
+    width: 100%;
+    height: 100px;
+    background-image: url("https://www.chula.ac.th/wp-content/uploads/2018/03/map-transportation-hero-1440x900.jpg");
+    background-size: cover;
+    background-position: center;
+    background-blend-mode: overlay;
+    background-color: rgba(0, 0, 0, 0.5);
+    box-shadow: 0px -2px 4px 4px rgb(0, 0, 0, 0.2);
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    z-index: 1;
+    color: white;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 16px 32px;
+}
+
+#mapstore-map-header .title {
+    font-size: 36px;
+    font-family: Prompt;
+}
