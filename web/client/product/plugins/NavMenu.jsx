@@ -81,7 +81,6 @@ class NavMenu extends React.Component {
     };
 
     getLinks = (width) => {
-
         return this.props.items && [...this.props.items, ...(this.props.links || [])]
             .filter(item => item.href || item.linkId || item.tool || !item.hide)
             .map(item => item.tool && isFunction(item.tool) && item.tool(item.cfg) || item)
