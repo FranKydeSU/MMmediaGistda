@@ -365,15 +365,15 @@ class RoutingDialog extends React.Component {
             ret += "" + hrs + " ชั่วโมง " + (mins < 10 ? "0" : "");
         }
         ret += "" + mins + " นาที ";
-        return (<div class="panel-heading">{ret}</div>)
+        return (<div className="panel-heading">{ret}</div>)
     }
 
     renderGuideList = (guideList, time) => {
         return (
             <div>
-                <div class="panel panel-primary" style={{ marginTop: '10px' }}>
+                <div className="panel panel-primary" style={{ marginTop: '10px' }}>
                     {this.renderEastimateTime(time)}
-                    <div class="panel-body">
+                    <div className="panel-body">
                         <div style={this.routingGuideList} key="routing-guide">{guideList}</div>
                     </div>
                 </div>
@@ -576,7 +576,6 @@ const routingResultLoadedEpic = (action$, { getState = () => { } }) =>
             const style = {
                 highlight: false
             };
-
             let locationList = [];
             features.forEach(f => {
                 locationList = locationList.concat(
@@ -588,16 +587,55 @@ const routingResultLoadedEpic = (action$, { getState = () => { } }) =>
                     })
                 );
             });
+            let featuresFormat = features.map((feature) => {
+                feature.properties = {
+                    ...feature.properties,
+                    id: uuidv1(),
+                    isValidFeature: true,
+                    canEdit: false
+                }
+                if(feature.geometry.type === "LineString"){
+                    feature.style =  [{
+                            color: "#006994",
+                            opacity: 1,
+                            weight: 4,
+                            editing: {
+                                fill: 1
+                            },
+                            highlight: false,
+                            id:  uuidv1()
+                        }
+                    ]
+                }else {
+                    feature.style = [
+                        {
+                            iconGlyph: "map-pin",
+                            iconShape: "square",
+                            iconColor: "blue",
+                            highlight: false,
+                            id: uuidv1()
+                        }
+                    ]
+                }
+                return feature
+            })
             const bbox = window.longdo.Util.locationBound(locationList);
+            const featureCollection = [
+                {
+                    "type": "FeatureCollection",
+                    "newFeature": true,
+                    "id": uuidv1(),
+                    "geometry": null, 
+                    "properties": uuidv1(),
+                    "features": [...featuresFormat]
+                }
+            ]
             return Rx.Observable.from([
                 changeDrawingStatus("clean", "", "routingResult", [], {}),
-                changeDrawingStatus('drawOrEdit', 'LineString', 'routingResult', features, drawOptions, style),
-                // changeDrawingStatus('drawOrEdit', 'Point', 'routingPointResult', features, drawOptions, style),
-                zoomToExtent(
-                    [bbox.minLon, bbox.minLat, bbox.maxLon, bbox.maxLat],
-                    'EPSG:4326',
-                    20,
-                    { nearest: true }
+                // changeDrawingStatus('drawOrEdit', 'Point', 'routingResult', mapPoints, drawOptions, style),
+                changeDrawingStatus('drawOrEdit', 'LineString', 'routingResult', featureCollection, drawOptions, style),
+                zoomToExtent([bbox.minLon, bbox.minLat, bbox.maxLon, bbox.maxLat],'EPSG:4326',20,
+                { nearest: true }
                 )
             ]);
         });
