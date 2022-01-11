@@ -14,6 +14,7 @@ export default {
         // product plugins
         AboutPlugin: require('./plugins/About').default,
         AttributionPlugin: require('./plugins/Attribution').default,
+        AboutUsPlugin: require('./plugins/AboutUs').default,
         FooterPlugin: require('./plugins/Footer'),
         ForkPlugin: require('./plugins/Fork').default,
         HeaderPlugin: require('./plugins/Header').default,
@@ -45,7 +46,7 @@ export default {
         DrawerMenuPlugin: require('../plugins/DrawerMenu').default,
         ExpanderPlugin: require('../plugins/Expander').default,
         FeatureEditorPlugin: require('../plugins/FeatureEditor').default,
-        FeaturedMaps: require('../plugins/FeaturedMaps').default,
+        FeaturedMaps: require('../product/plugins/FeaturedMaps').default,
         FeedbackMaskPlugin: require('../plugins/FeedbackMask').default,
         FilterLayerPlugin: require('../plugins/FilterLayer').default,
         FloatingLegendPlugin: require('../plugins/FloatingLegend').default,

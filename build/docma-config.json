@@ -329,6 +329,7 @@
                 "web/client/product/pages/MapViewer.jsx",
                 "web/client/product/pages/RulesManager.jsx",
                 "web/client/product/plugins/About.jsx",
+                "web/client/product/plugins/AboutUs.jsx",
                 "web/client/product/plugins/Attribution.jsx",
                 "web/client/product/plugins/Footer.jsx",
                 "web/client/product/plugins/Fork.jsx",
