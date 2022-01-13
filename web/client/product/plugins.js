@@ -80,7 +80,7 @@ export default {
         MapImportPlugin: require('../plugins/MapImport').default,
         MapLoadingPlugin: require('../plugins/MapLoading').default,
         MapPlugin: require('../plugins/Map').default,
-        MapSearchPlugin: require('../plugins/MapSearch').default,
+        MapSearchPlugin: require('../product/plugins/MapSearch').default,
         MapsPlugin: require('../plugins/Maps').default,
         MapCatalogPlugin: require('../plugins/MapCatalog').default,
         MapTemplatesPlugin: require('../plugins/MapTemplates').default,
