@@ -73,6 +73,15 @@ const searchRouting = (pointList) => {
             if (pointList.length === 2) {
                 routeGeoJson.push({
                     type: "Feature",
+                    style: [
+                        {
+                            iconGlyph: "map-marker",
+                            iconShape: "square",
+                            iconColor: "blue",
+                            highlight: false,
+                            id: uuidv1()
+                        }
+                    ],
                     geometry: {
                         type: "Point",
                         coordinates: [
@@ -83,6 +92,15 @@ const searchRouting = (pointList) => {
                 })
                 routeGeoJson.push({
                     type: "Feature",
+                    style: [
+                        {
+                            iconGlyph: "stop-circle",
+                            iconShape: "square",
+                            iconColor: "blue",
+                            highlight: false,
+                            id: uuidv1()
+                        }
+                    ],
                     geometry: {
                         type: "Point",
                         coordinates: [
@@ -96,6 +114,15 @@ const searchRouting = (pointList) => {
             } else {
                 routeGeoJson.push({
                     type: "Feature",
+                    style: [
+                        {
+                            iconGlyph: "map-marker",
+                            iconShape: "square",
+                            iconColor: "blue",
+                            highlight: false,
+                            id: uuidv1()
+                        }
+                    ],
                     geometry: {
                         type: "Point",
                         coordinates: [
@@ -106,6 +133,15 @@ const searchRouting = (pointList) => {
                 })
                 routeGeoJson.push({
                     type: "Feature",
+                    style: [
+                        {
+                            iconGlyph: "map-pin",
+                            iconShape: "square",
+                            iconColor: "blue",
+                            highlight: false,
+                            id: uuidv1()
+                        }
+                    ],
                     geometry: {
                         type: "Point",
                         coordinates: [
@@ -139,6 +175,15 @@ const searchRouting = (pointList) => {
                         // console.log(`BEFORE PUSH NEW FEATURE ${routeGeoJson.length}`)
                         routeGeoJson.push({
                             type: "Feature",
+                            style: [
+                                {
+                                    iconGlyph: "map-pin",
+                                    iconShape: "square",
+                                    iconColor: "blue",
+                                    highlight: false,
+                                    id: uuidv1()
+                                }
+                            ],
                             geometry: {
                                 type: "Point",
                                 coordinates: [
@@ -607,15 +652,15 @@ const routingResultLoadedEpic = (action$, { getState = () => { } }) =>
                         }
                     ]
                 }else {
-                    feature.style = [
-                        {
-                            iconGlyph: "map-pin",
-                            iconShape: "square",
-                            iconColor: "blue",
-                            highlight: false,
-                            id: uuidv1()
-                        }
-                    ]
+                    // feature.style = [
+                    //     {
+                    //         iconGlyph: iconStyle || "map-pin",
+                    //         iconShape: "square",
+                    //         iconColor: "blue",
+                    //         highlight: false,
+                    //         id: uuidv1()
+                    //     }
+                    // ]
                 }
                 return feature
             })
