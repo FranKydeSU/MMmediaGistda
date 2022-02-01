@@ -21,6 +21,12 @@ import { zoomToExtent } from '../../actions/map';
 
 import {
     TEXT_SEARCH_STARTED,
+    TEXT_SEARCH_RESULTS_PURGE,
+    TEXT_SEARCH_RESET,
+    TEXT_SEARCH_ITEM_SELECTED,
+    searchTextLoading,
+    searchResultLoaded,
+    searchResultError,
     addMarker,
     cancelSelectedItem,
     changeActiveSearchTool,
@@ -217,7 +223,6 @@ export const searchEpic = action$ =>
             Rx.Observable.from(
                 (action.services || [{ type: "nominatim", priority: 5 }])
                     .map((service) => {
-                        console.log('AA')
                         const serviceInstance = API.Utils.getService(service.type);
                         if (!serviceInstance) {
                             const err = new Error("Service Missing");
@@ -225,7 +230,7 @@ export const searchEpic = action$ =>
                             err.serviceType = service.type;
                             return Rx.Observable.of(err).do((e) => {throw e; });
                         }
-                        return Rx.Observable.defer(() =>
+                        const data = Rx.Observable.defer(() =>
                             serviceInstance(action.searchText, service.options)
                                 .then( (response = []) => response.map(result => ({...result, __SERVICE__: service, __PRIORITY__: service.priority || 0}))
                                 ))
@@ -235,8 +240,20 @@ export const searchEpic = action$ =>
                                 }
                                 return count + 1;
                             }, 0));
-                    })
+
+                        return data
+                    }) // Map
             )
+            .mergeAll()
+            .scan((oldRes, newRes) => sortBy([...oldRes, ...newRes], ["__PRIORITY__"]))
+            .map((results) => searchResultLoaded(results.slice(0, action.maxResults || 15), false))
+                .startWith(searchTextLoading(true))
+                .takeUntil(action$.ofType( TEXT_SEARCH_RESULTS_PURGE, TEXT_SEARCH_RESET, TEXT_SEARCH_ITEM_SELECTED))
+                .concat([searchTextLoading(false)])
+                .catch(e => {
+                    const err = {msgId: "search.generic_error", ...e, message: e.message, stack: e.stack};
+                    return Rx.Observable.from([searchResultError(err), searchTextLoading(false)]);
+                })
         )
 
 export default {
