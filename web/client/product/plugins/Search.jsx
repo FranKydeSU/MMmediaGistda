@@ -64,6 +64,8 @@ import uuidv1 from "uuid/v1";
 const axios = require('axios')
 const instance = axios.create();
 
+const LONGDO_API_KEY = "98034a5f21623ae53d3802af7b86fddf"
+
 const searchSelector = createSelector([
     state => state.search || null,
     state => state.controls && state.controls.searchBookmarkConfig || null,
@@ -226,7 +228,7 @@ export const searchEpic = action$ =>
                     .map((service) => {
                         const serviceInstance = API.Utils.getService(service.type);
                         const getSearchData = () => {
-                            return instance.get(`https://search.longdo.com/mapsearch/json/search?keyword=${action.searchText}&key=thisisreallymagic`)
+                            return instance.get(`https://search.longdo.com/mapsearch/json/search?keyword=${action.searchText}&key=${LONGDO_API_KEY}`)
                         }
                         const isSearchByLongdoMap = localStorage.getItem('isLongdoSearch')
                         if (!serviceInstance) {
