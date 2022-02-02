@@ -104,7 +104,7 @@ export default {
         ScaleBoxPlugin: require('../plugins/ScaleBox').default,
         ScrollTopPlugin: require('../plugins/ScrollTop').default,
         SearchPlugin: require('../product/plugins/Search').default,
-        SearchServicesConfigPlugin: require('../plugins/SearchServicesConfig').default,
+        SearchServicesConfigPlugin: require('../product/plugins/SearchServicesConfig').default,
         SearchByBookmarkPlugin: require('../plugins/SearchByBookmark').default,
         SettingsPlugin: require('../plugins/Settings').default,
         SharePlugin: require('../plugins/Share'),
