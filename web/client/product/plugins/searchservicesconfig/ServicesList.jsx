@@ -33,7 +33,7 @@ class ServicesList extends React.Component {
     static defaultProps = {
         services: [],
         override: false,
-        longdoSearch: false,
+        longdoSearch: localStorage.getItem('isLongdoSearch') === 'true' ? true : false,
         onPropertyChange: () => {}
     };
 
