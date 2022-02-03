@@ -56,7 +56,7 @@ class ServicesList extends React.Component {
     };
 
     render() {
-        const {override, longdoSearch} = this.props;
+        const {override} = this.props;
         return (
             <form>
                 <FormGroup>
@@ -69,9 +69,6 @@ class ServicesList extends React.Component {
                 </FormGroup>
                 <Checkbox checked={override} onChange={this.toggleOverride}>
                     <Message msgId="search.overriedservice" />
-                </Checkbox>
-                <Checkbox checked={longdoSearch} onChange={this.searchByLongdoMap}>
-                    Search by Longdo Map
                 </Checkbox>
             </form>);
     }

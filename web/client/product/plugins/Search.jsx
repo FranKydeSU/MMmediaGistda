@@ -227,10 +227,7 @@ export const searchEpic = action$ =>
                 (action.services || [{ type: "nominatim", priority: 5 }])
                     .map((service) => {
                         const serviceInstance = API.Utils.getService(service.type);
-                        const getSearchData = () => {
-                            return instance.get(`https://search.longdo.com/mapsearch/json/search?keyword=${action.searchText}&key=${LONGDO_API_KEY}`)
-                        }
-                        const isSearchByLongdoMap = localStorage.getItem('isLongdoSearch')
+                        const getSearchData = (searchText = '') => { return instance.get(`https://search.longdo.com/mapsearch/json/search?keyword=${searchText}&key=${LONGDO_API_KEY}`)}
                         if (!serviceInstance) {
                             const err = new Error("Service Missing");
                             err.msgId = "search.service_missing";
@@ -238,36 +235,26 @@ export const searchEpic = action$ =>
                             return Rx.Observable.of(err).do((e) => {throw e; });
                         }
                         return Rx.Observable.defer(() =>
-                            isSearchByLongdoMap === 'true' ? 
-                            getSearchData().then(({data}) => {
-                               let response = data.data
-                               let responseFormat = []
-                               response.map((list) => {
-                                    responseFormat.push({
-                                        "properties": {
-                                            "place_id": list.id,
-                                            "display_name": list.name,
-                                            "icon": "https://nominatim.openstreetmap.org/ui/mapicons//poi_place_village.p.20.png",
+                            service.type === 'nominatim' ? getSearchData(action.searchText).then(({ data } ) => {
+                                var response = data.data
+                                var geoJson = []
+                                response.map((searchResult) => {
+                                    geoJson.push({
+                                        properties: {
+                                            place_id: searchResult.id,
+                                            display_name: searchResult.name
                                         },
-                                        "id": uuidv1(),
-                                        "type": "Feature",
-                                        "bbox": [
-                                            (list.lon - 0.1),
-                                            (list.lat - 0.1),
-                                            (list.lon + 0.1),
-                                            (list.lat + 0.1),
-                                        ],
-                                        "geometry": {
-                                            "type": "Point",
-                                            "coordinates": [
-                                                list.lon,
-                                                list.lat
-                                            ]
+                                        id: uuidv1(),
+                                        type: "Feature",
+                                        bbox: [(searchResult.lon - 0.1),(searchResult.lat - 0.1),(searchResult.lon + 0.1),(searchResult.lat + 0.1)],
+                                        geometry: {
+                                            type: "Point",
+                                            coordinates: [searchResult.lon,searchResult.lat]
                                         }
                                     })
-                               })
-                               return responseFormat
-                            }) : 
+                                })
+                                return geoJson
+                            }) :
                            serviceInstance(action.searchText, service.options)
                                 .then( (response = []) => response.map(result => ({...result, __SERVICE__: service, __PRIORITY__: service.priority || 0}))
                                 ))
