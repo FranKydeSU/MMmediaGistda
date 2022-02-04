@@ -1,3 +1,4 @@
+import uuidv1 from "uuid/v1";
 import assign from 'object-assign';
 import React from 'react';
 import { connect } from 'react-redux';
@@ -36,12 +37,25 @@ const featureLoaded = function(features) {
         features: features
     };
 };
-const loadFeature = function(radius, center) {
+const loadFeature = function(radius, center, radiusFeature) {
     return (dispatch) => {
         return axios.get(
             `https://geonode-d2.longdo.com/geoserver/wfs?service=wfs&version=1.1.0&request=GetFeature&typeNames=geonode:event2020_en&outputFormat=application/json&cql_filter=DWithin(location,POINT(${center.y}%20${center.x}),${radius},meters)&SRSName=EPSG:4326`,
         ).then((response) => {
-            dispatch(featureLoaded(response.data.features));
+            var featuresGeoJson = response.data.features
+            featuresGeoJson.map((geoJson) => {
+                if(geoJson.geometry.type === 'Point'){
+                    geoJson['style'] = {
+                            iconGlyph: "map-marker",
+                            iconShape: "square",
+                            iconColor: "blue",
+                            highlight: false,
+                            id: uuidv1()
+                        }
+                }
+            })
+            featuresGeoJson.push(radiusFeature)
+            dispatch(featureLoaded(featuresGeoJson));
         }).catch((e) => {
             console.log(e);
             dispatch(featureLoaded([]));
@@ -192,18 +206,7 @@ const changeCenterEpic = (action$, {getState = () => {}}) =>
                 translateEnabled: false,
                 drawEnabled: false
             };
-
-            const style = {
-                color: '#ff0000',
-                opacity: 1,
-                weight: 3,
-                fillColor: '#ffffff',
-                fillOpacity: 0.2,
-                highlight: false
-            };
-
             const radius = getState().nearby.radius;
-
             const geometry = circle(
                 [ center.x, center.y ],
                 radius,
@@ -213,19 +216,34 @@ const changeCenterEpic = (action$, {getState = () => {}}) =>
                 }
             ).geometry;
 
-            const feature = {
-                type: 'Feature',
+            const feature =  {
+                type: "Feature",
                 geometry: geometry,
-                id: 'nearby_buffer',
                 properties: {
-                    name: 'Nearby Buffer'
-                }
-            };
-
+                    isCircle: true,
+                    radius: radius,
+                    id: uuidv1(),
+                    crs: "EPSG:3857",
+                    isGeodesic: true
+                },
+                style: [
+                    {
+                        color: "#48C9B0",
+                        opacity: 1,
+                        weight: 5,
+                        fillColor: "#ffffff",
+                        fillOpacity: 0.3,
+                        highlight: false,
+                        type: "Circle",
+                        title: "Near by",
+                        id: uuidv1
+                    }
+                ]
+            }
             return Rx.Observable.from([
-                changeDrawingStatus('drawOrEdit', 'Circle', 'nearby', [feature], drawOptions, style),
+                //changeDrawingStatus('drawOrEdit', 'Circle', 'nearby', [feature], drawOptions, style),
                 changeCenter(center),
-                loadFeature(radius * 1000, center)
+                loadFeature(radius * 1000, center, feature)
             ]);
         });
 
@@ -244,15 +262,6 @@ const changeRadiusEpic = (action$, {getState = () => {}}) =>
                 drawEnabled: false
             };
 
-            const style = {
-                color: '#ff0000',
-                opacity: 1,
-                weight: 3,
-                fillColor: '#ffffff',
-                fillOpacity: 0.2,
-                highlight: false
-            };
-
             const center = getState().map.present.center;
 
             const geometry = circle(
@@ -264,19 +273,35 @@ const changeRadiusEpic = (action$, {getState = () => {}}) =>
                 }
             ).geometry;
 
-            const feature = {
-                type: 'Feature',
+            const feature =  {
+                type: "Feature",
                 geometry: geometry,
-                id: 'nearby_buffer',
                 properties: {
-                    name: 'Nearby Buffer'
-                }
-            };
+                    isCircle: true,
+                    radius: radius,
+                    id: uuidv1(),
+                    crs: "EPSG:3857",
+                    isGeodesic: true
+                },
+                style: [
+                    {
+                        color: "#48C9B0",
+                        opacity: 1,
+                        weight: 5,
+                        fillColor: "#ffffff",
+                        fillOpacity: 0.3,
+                        highlight: false,
+                        type: "Circle",
+                        title: "Near by",
+                        id: uuidv1
+                    }
+                ]
+            }
 
 
             return Rx.Observable.from([
-                changeDrawingStatus('drawOrEdit', 'Circle', 'nearby', [feature], drawOptions, style),
-                loadFeature(radius * 1000, center)
+                //changeDrawingStatus('drawOrEdit', 'Circle', 'nearby', [feature], drawOptions, style),
+                loadFeature(radius * 1000, center,feature)
             ]);
         });
 
@@ -294,9 +319,18 @@ const nearbyResultLoadedEpic = (action$, {getState = () => {}}) =>
                 translateEnabled: false,
                 drawEnabled: false
             };
-
+            const featureCollection = [
+                {
+                    type: "FeatureCollection",
+                    newFeature: true,
+                    id: uuidv1(),
+                    geometry: null,
+                    properties: uuidv1(),
+                    features: [...features],
+                },
+            ];
             return Rx.Observable.from([
-                changeDrawingStatus('drawOrEdit', 'Point', 'nearbyResult', features, drawOptions)
+                changeDrawingStatus('drawOrEdit', 'Point', 'nearbyResult', featureCollection, drawOptions)
             ]);
         });
 
