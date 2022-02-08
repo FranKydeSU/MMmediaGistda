@@ -192,8 +192,21 @@ class NearbyDialog extends React.Component {
                         size={330 / width > 1 ? 1 : 330 / width} 
                         >
                             <BorderLayout header={this.renderHeader()}>
-                                <div style={{ padding: '10px'}}>   
-                                    <label>Radius (km)</label>
+                                <div style={{ padding: '10px'}}> 
+                                    <label>Layers</label>  
+                                    <SelectLocalized 
+                                    noResultsText="identifyLayerSelectNoResult"
+                                    options={[
+                                        {
+                                            "label": "จุดเหตุการณ์ในประเทศไทย พ.ศ.2562",
+                                            "value": "จุดเหตุการณ์ในประเทศไทย พ.ศ.2562",
+                                            "idx": 0,
+                                            "style": {
+                                                "display": "block"
+                                            }
+                                        }
+                                    ]}/>
+                                    <label style={{marginTop:'15px'}}>Radius (km)</label>
                                     <div className="mapstore-slider with-tooltip">
                                         <Slider
                                             step={0.1}
