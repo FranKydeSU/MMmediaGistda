@@ -1,19 +1,28 @@
 import uuidv1 from "uuid/v1";
 import assign from 'object-assign';
 import React from 'react';
-import { connect } from 'react-redux';
+import axios from '../../libs/ajax';
 import Rx from 'rxjs';
-import { createSelector } from 'reselect';
 import PropTypes from 'prop-types';
-import { get } from 'lodash';
 import Dialog from '../../components/misc/Dialog';
 import Slider from 'react-nouislider';
+import circle from '@turf/circle';
+import Select from 'react-select';
+import Button from '../../components/misc/Button';
+import Dock from 'react-dock';
+import BorderLayout from '../../components/layout/BorderLayout'
+import ContainerDimensions from 'react-container-dimensions';
+
+import { get } from 'lodash';
 import { setControlProperty, toggleControl } from '../../actions/controls';
 import { Glyphicon } from 'react-bootstrap';
 import { createControlEnabledSelector } from '../../selectors/controls';
-import circle from '@turf/circle';
+import { createSelector } from 'reselect';
+import { connect } from 'react-redux';
 import { changeDrawingStatus } from '../../actions/draw';
-import axios from '../../libs/ajax';
+
+import localizedProps from '../../components/misc/enhancers/localizedProps';
+const SelectLocalized = localizedProps(['placeholder', 'clearValueText', 'noResultsText'])(Select);
 
 createControlEnabledSelector('nearby');
 const nearbySelector = (state) => get(state, 'controls.nearby.enabled');
@@ -74,7 +83,7 @@ const selector = (state) => {
 const defaultState = {
     radius: 1.0,
     center: null,
-    results: []
+    results: [],
 };
 function nearbyReducer(state = defaultState, action) {
     switch (action.type) {
@@ -105,13 +114,23 @@ class NearbyDialog extends React.Component {
         radius: PropTypes.number,
         results: PropTypes.array,
         onClose: PropTypes.func,
-        onChangeRadius: PropTypes.func
+        onChangeRadius: PropTypes.func,
+        dockProps: PropTypes.object
+        
     };
 
     static defaultProps = {
         show: false,
         radius: 1.00,
-        results: []
+        results: [],
+        dockProps: {
+            dimMode: "none",
+            size: 0.30,
+            fluid: true,
+            position: "right",
+            zIndex: 1030
+        },
+        dockStyle: {}
     };
 
     onClose = () => {
@@ -133,6 +152,28 @@ class NearbyDialog extends React.Component {
         left: '0px'
     };
 
+    renderHeader() {
+        return (
+            <div style={{ width: '100%' }}>
+                <div style={{display: "flex", alignItems: "center"}}>
+                    <div>
+                        <Button className="square-button no-events">
+                            <Glyphicon glyph="record"/>
+                        </Button>
+                    </div>
+                    <div style={{flex: "1 1 0%", padding: 8, textAlign: "center"}}>
+                        <h4>Nearby</h4>
+                    </div>
+                    <div>
+                        <Button className="square-button no-border" onClick={this.onClose}>
+                            <Glyphicon glyph="1-close"/>
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     render() {
         const items = [];
         for (const [index, value] of this.props.results.entries()) {
@@ -141,28 +182,58 @@ class NearbyDialog extends React.Component {
 
         return this.props.show
             ? (
-                <Dialog id="nearby-dialog" style={this.dialogStyle} start={this.start}>
-                    <div key="header" role="header">
-                        <Glyphicon glyph="search"/>&nbsp;Nearby
-                        <button key="close" onClick={this.onClose} className="close"><Glyphicon glyph="1-close" /></button>
-                    </div>
-                    <div key="body" role="body">
-                        <label>Radius (km)</label>
-                        <div className="mapstore-slider with-tooltip">
-                            <Slider
-                                tooltips
-                                step={0.1}
-                                start={[this.props.radius]}
-                                range={{
-                                    'min': [0],
-                                    'max': [20]
-                                }}
-                                onChange={(value) => { this.onChangeRadius(value[0]); }}
-                            />
-                        </div>
-                        <div>{items}</div>
-                    </div>
-                </Dialog>
+                <ContainerDimensions>
+                { ({ width }) =>
+                    <span className="react-dock-no-resize">
+                        <Dock 
+                        fluid 
+                        dockStyle={this.props.dockStyle} {...this.props.dockProps}
+                        isVisible={this.props.show} 
+                        size={330 / width > 1 ? 1 : 330 / width} 
+                        >
+                            <BorderLayout header={this.renderHeader()}>
+                                <div style={{ padding: '10px'}}>   
+                                    <label>Radius (km)</label>
+                                    <div className="mapstore-slider with-tooltip">
+                                        <Slider
+                                            step={0.1}
+                                            start={[this.props.radius]}
+                                            range={{
+                                                'min': [0],
+                                                'max': [20]
+                                            }}
+                                            onChange={(value) => { this.onChangeRadius(value[0]); }}
+                                        />
+                                    </div>
+                                    <div>{items}</div>
+                                </div>
+                             
+                            </BorderLayout>
+                        </Dock>
+                    </span>
+                }
+               </ContainerDimensions>
+                // <Dialog id="nearby-dialog" style={this.dialogStyle} start={this.start}>
+                //     <div key="header" role="header">
+                //         <Glyphicon glyph="search"/>&nbsp;Nearby
+                //         <button key="close" onClick={this.onClose} className="close"><Glyphicon glyph="1-close" /></button>
+                //     </div>
+                //     <div key="body" role="body">
+                //         <label>Radius (km)</label>
+                //         <div className="mapstore-slider with-tooltip">
+                //             <Slider
+                //                 step={0.1}
+                //                 start={[this.props.radius]}
+                //                 range={{
+                //                     'min': [0],
+                //                     'max': [20]
+                //                 }}
+                //                 onChange={(value) => { this.onChangeRadius(value[0]); }}
+                //             />
+                //         </div>
+                //         <div>{items}</div>
+                //     </div>
+                // </Dialog>
             ) : null;
     }
 }
@@ -343,7 +414,7 @@ export default {
             help: 'help',
             tooltip: 'tooltip',
             text: 'Nearby',
-            icon: <Glyphicon glyph="search"/>,
+            icon: <Glyphicon glyph="record" />,
             action: () => setControlProperty('nearby', 'enabled', true)
         }
     }),
