@@ -4,7 +4,7 @@ import React from 'react';
 import axios from '../../libs/ajax';
 import Rx from 'rxjs';
 import PropTypes from 'prop-types';
-import Dialog from '../../components/misc/Dialog';
+// import Dialog from '../../components/misc/Dialog';
 import Slider from 'react-nouislider';
 import circle from '@turf/circle';
 import Select from 'react-select';
@@ -12,6 +12,7 @@ import Button from '../../components/misc/Button';
 import Dock from 'react-dock';
 import BorderLayout from '../../components/layout/BorderLayout'
 import ContainerDimensions from 'react-container-dimensions';
+import LayerSelector from './nearby/LayerSelector'
 
 import { get } from 'lodash';
 import { setControlProperty, toggleControl } from '../../actions/controls';
@@ -21,12 +22,21 @@ import { createSelector } from 'reselect';
 import { connect } from 'react-redux';
 import { changeDrawingStatus } from '../../actions/draw';
 
-import localizedProps from '../../components/misc/enhancers/localizedProps';
-const SelectLocalized = localizedProps(['placeholder', 'clearValueText', 'noResultsText'])(Select);
+import {
+    groupsSelector
+} from '../../selectors/layers';
 
 createControlEnabledSelector('nearby');
 const nearbySelector = (state) => get(state, 'controls.nearby.enabled');
+
 const toggleNearbyTool = toggleControl.bind(null, 'nearby', null);
+const layerNodesExtracter = (groups) => {
+    const layerNode = []
+    groups.map(groupNode => {
+        layerNode.push(...groupNode.nodes)
+    })
+    return layerNode
+}
 
 const setRadius = function(radius) {
     return {
@@ -34,6 +44,13 @@ const setRadius = function(radius) {
         radius: Number(radius) || 1.0
     };
 };
+const setLayer = function(layer,idx) {
+    return {
+        type: 'SET_LAYER_FILTER',
+        layer: layer,
+        index: idx
+    }
+}
 const changeCenter = function(center) {
     return {
         type: 'SET_NEARBY_CENTER',
@@ -46,25 +63,59 @@ const featureLoaded = function(features) {
         features: features
     };
 };
-const loadFeature = function(radius, center, radiusFeature) {
+const loadFeature = function(radius, center, radiusFeature,layerSelected) {
+    if(!layerSelected){
+        layerSelected = {}
+    }
+    const DEFAULT_API = 'https://geonode.longdo.com/geoserver/wfs';
     return (dispatch) => {
-        return axios.get(
-            `https://geonode-d2.longdo.com/geoserver/wfs?service=wfs&version=1.1.0&request=GetFeature&typeNames=geonode:event2020_en&outputFormat=application/json&cql_filter=DWithin(location,POINT(${center.y}%20${center.x}),${radius},meters)&SRSName=EPSG:4326`,
-        ).then((response) => {
-            var featuresGeoJson = response.data.features
-            featuresGeoJson.map((geoJson) => {
-                if(geoJson.geometry.type === 'Point'){
-                    geoJson['style'] = {
-                            iconGlyph: "map-marker",
-                            iconShape: "square",
-                            iconColor: "blue",
-                            highlight: false,
-                            id: uuidv1()
+        // https://geonode.longdo.com/geoserver/wfs?service=WFS&version=1.1.0&request=DescribeFeatureType&typeName=geonode%3Aevent2019_Z7Ya8nR&outputFormat=application%2Fjson
+        // ?DWithin(${layerType.name},POINT(${center.y}%20,${center.x}),${radius},meters)
+        axios.get(layerSelected.url || DEFAULT_API,{
+            params: {
+                service : 'WFS',
+                version: layerSelected.version,
+                request: 'DescribeFeatureType',
+                typeName: layerSelected.name,
+                outputFormat: 'application/json'
+            }
+        }).then(({ data }) => {
+            const layerInfo = data.featureTypes[0]
+            try {
+               const layerType =  layerInfo.properties.find((layerType) => { return layerType.localType === 'Point'})
+               if(layerType.name !== null || layerType.name !== 'undefined'){
+                   const positionPoint = center.y+' '+center.x
+                   axios.get(`${layerSelected.url || DEFAULT_API}`,{
+                       params: {
+                        service : 'WFS',
+                        version: layerSelected.version,
+                        request:'GetFeature',
+                        typeNames: layerSelected.name,
+                        outputFormat: 'application/json',
+                        SRSName:'EPSG:4326',
+                        cql_filter: `DWithin(${layerType.name},POINT(${positionPoint}),${radius},meters)`
+                       }
+                   }).then((response) => {
+                    var featuresGeoJson = response.data.features
+                    featuresGeoJson.map((geoJson) => {
+                        if(geoJson.geometry.type === 'Point'){
+                            geoJson['style'] = {
+                                    iconGlyph: "map-marker",
+                                    iconShape: "circle",
+                                    iconColor: "blue",
+                                    highlight: false,
+                                    id: uuidv1()
+                                }
                         }
-                }
-            })
-            featuresGeoJson.push(radiusFeature)
-            dispatch(featureLoaded(featuresGeoJson));
+                    })
+                    featuresGeoJson.push(radiusFeature)
+                    dispatch(featureLoaded(featuresGeoJson));        
+                   })
+               }
+            } catch (error) {
+                console.log(error)
+                dispatch(featureLoaded([]));
+            }
         }).catch((e) => {
             console.log(e);
             dispatch(featureLoaded([]));
@@ -76,7 +127,9 @@ const selector = (state) => {
     return {
         radius: state.nearby.radius,
         center: state.nearby.center,
-        results: state.nearby.results
+        results: state.nearby.results,
+        layer: state.nearby.layer,
+        layerIndex: state.nearby.layerIndex
     };
 };
 
@@ -84,6 +137,8 @@ const defaultState = {
     radius: 1.0,
     center: null,
     results: [],
+    layer: {},
+    layerIndex: -1
 };
 function nearbyReducer(state = defaultState, action) {
     switch (action.type) {
@@ -91,6 +146,12 @@ function nearbyReducer(state = defaultState, action) {
         return assign({}, state, {
             radius: action.radius
         });
+    }
+    case 'SET_LAYER_FILTER': {
+        return assign({},state,{
+            layer: action.layer,
+            layerIndex: action.index
+        })
     }
     case 'SET_NEARBY_CENTER': {
         return assign({}, state, {
@@ -115,8 +176,11 @@ class NearbyDialog extends React.Component {
         results: PropTypes.array,
         onClose: PropTypes.func,
         onChangeRadius: PropTypes.func,
-        dockProps: PropTypes.object
-        
+        onChangeLayer: PropTypes.func,
+        dockProps: PropTypes.object,
+        layersGroups: PropTypes.array,
+        layersNode: PropTypes.array,
+        layerIndex: PropTypes.number
     };
 
     static defaultProps = {
@@ -130,7 +194,10 @@ class NearbyDialog extends React.Component {
             position: "right",
             zIndex: 1030
         },
-        dockStyle: {}
+        dockStyle: {},
+        layersGroups: [],
+        layersNode: [],
+        layerIndex: -1
     };
 
     onClose = () => {
@@ -139,6 +206,12 @@ class NearbyDialog extends React.Component {
 
     onChangeRadius = (radius) => {
         this.props.onChangeRadius(radius);
+    };
+
+    onLayerChange = (idx) => {
+        const getLayer = this.props.layersNode[idx]
+        this.props.onChangeLayer(getLayer,idx)
+        this.props.onChangeRadius(1.0);
     };
 
     start = {
@@ -175,11 +248,10 @@ class NearbyDialog extends React.Component {
     }
 
     render() {
-        const items = [];
+        const items =   [];
         for (const [index, value] of this.props.results.entries()) {
-            items.push(<li key={index}>{value.properties.title_en}</li>);
+            items.push(<li key={index}>{value.properties.title_en || 'No title'}</li>);
         }
-
         return this.props.show
             ? (
                 <ContainerDimensions>
@@ -194,30 +266,26 @@ class NearbyDialog extends React.Component {
                             <BorderLayout header={this.renderHeader()}>
                                 <div style={{ padding: '10px'}}> 
                                     <label>Layers</label>  
-                                    <SelectLocalized 
-                                    noResultsText="identifyLayerSelectNoResult"
-                                    options={[
-                                        {
-                                            "label": "จุดเหตุการณ์ในประเทศไทย พ.ศ.2562",
-                                            "value": "จุดเหตุการณ์ในประเทศไทย พ.ศ.2562",
-                                            "idx": 0,
-                                            "style": {
-                                                "display": "block"
-                                            }
-                                        }
-                                    ]}/>
+                                        <div>
+                                            <LayerSelector
+                                                responses={this.props.layersNode}
+                                                index={this.props.layerIndex}
+                                                setIndex={this.onLayerChange}
+                                            ></LayerSelector>
+                                        </div>
                                     <label style={{marginTop:'15px'}}>Radius (km)</label>
-                                    <div className="mapstore-slider with-tooltip">
-                                        <Slider
-                                            step={0.1}
-                                            start={[this.props.radius]}
-                                            range={{
-                                                'min': [0],
-                                                'max': [20]
-                                            }}
-                                            onChange={(value) => { this.onChangeRadius(value[0]); }}
-                                        />
-                                    </div>
+                                        <div className="mapstore-slider with-tooltip">
+                                            <Slider
+                                                tooltips
+                                                step={0.1}
+                                                start={[this.props.radius]}
+                                                range={{
+                                                    'min': [0],
+                                                    'max': [20]
+                                                }}
+                                                onChange={(value) => { this.onChangeRadius(value[0]); }}
+                                            />
+                                        </div>
                                     <div>{items}</div>
                                 </div>
                              
@@ -226,27 +294,6 @@ class NearbyDialog extends React.Component {
                     </span>
                 }
                </ContainerDimensions>
-                // <Dialog id="nearby-dialog" style={this.dialogStyle} start={this.start}>
-                //     <div key="header" role="header">
-                //         <Glyphicon glyph="search"/>&nbsp;Nearby
-                //         <button key="close" onClick={this.onClose} className="close"><Glyphicon glyph="1-close" /></button>
-                //     </div>
-                //     <div key="body" role="body">
-                //         <label>Radius (km)</label>
-                //         <div className="mapstore-slider with-tooltip">
-                //             <Slider
-                //                 step={0.1}
-                //                 start={[this.props.radius]}
-                //                 range={{
-                //                     'min': [0],
-                //                     'max': [20]
-                //                 }}
-                //                 onChange={(value) => { this.onChangeRadius(value[0]); }}
-                //             />
-                //         </div>
-                //         <div>{items}</div>
-                //     </div>
-                // </Dialog>
             ) : null;
     }
 }
@@ -257,18 +304,22 @@ const nearby = connect(
             selector,
             (state) => {
                 return nearbySelector(state);
-            }
+            },
+            groupsSelector,
         ],
-        (nearbyState, show) => {
+        (nearbyState, show,layersGroups) => {
             return {
                 ...nearbyState,
-                show
+                show,
+                layersGroups,
+                layersNode: layerNodesExtracter(layersGroups)
             };
         }
     ),
     {
         onClose: toggleNearbyTool,
-        onChangeRadius: setRadius
+        onChangeRadius: setRadius,
+        onChangeLayer: setLayer
     },
     null,
     {
@@ -291,6 +342,7 @@ const changeCenterEpic = (action$, {getState = () => {}}) =>
                 drawEnabled: false
             };
             const radius = getState().nearby.radius;
+            const layer = getState().nearby.layer;
             const geometry = circle(
                 [ center.x, center.y ],
                 radius,
@@ -325,12 +377,10 @@ const changeCenterEpic = (action$, {getState = () => {}}) =>
                 ]
             }
             return Rx.Observable.from([
-                //changeDrawingStatus('drawOrEdit', 'Circle', 'nearby', [feature], drawOptions, style),
                 changeCenter(center),
-                loadFeature(radius * 1000, center, feature)
+                loadFeature(radius * 1000, center, feature,layer)
             ]);
         });
-
 const changeRadiusEpic = (action$, {getState = () => {}}) =>
     action$.ofType('SET_NEARBY_RADIUS')
         .filter(() => {
@@ -347,7 +397,7 @@ const changeRadiusEpic = (action$, {getState = () => {}}) =>
             };
 
             const center = getState().map.present.center;
-
+            const layer = getState().nearby.layer;
             const geometry = circle(
                 [ center.x, center.y ],
                 radius,
@@ -385,7 +435,7 @@ const changeRadiusEpic = (action$, {getState = () => {}}) =>
 
             return Rx.Observable.from([
                 //changeDrawingStatus('drawOrEdit', 'Circle', 'nearby', [feature], drawOptions, style),
-                loadFeature(radius * 1000, center,feature)
+                loadFeature(radius * 1000, center,feature,layer)
             ]);
         });
 
@@ -403,6 +453,7 @@ const nearbyResultLoadedEpic = (action$, {getState = () => {}}) =>
                 translateEnabled: false,
                 drawEnabled: false
             };
+            const layerSelected = getState().nearby.layer;
             const featureCollection = [
                 {
                     type: "FeatureCollection",
