@@ -15,7 +15,7 @@ import ContainerDimensions from 'react-container-dimensions';
 import LayerSelector from './nearby/LayerSelector'
 
 import { get } from 'lodash';
-import { setControlProperty, toggleControl } from '../../actions/controls';
+import { setControlProperty } from '../../actions/controls';
 import { Glyphicon } from 'react-bootstrap';
 import { createControlEnabledSelector } from '../../selectors/controls';
 import { createSelector } from 'reselect';
@@ -26,10 +26,21 @@ import {
     groupsSelector
 } from '../../selectors/layers';
 
+export const TOGGLE_CONTROL = 'TOGGLE_CONTROL';
+
 createControlEnabledSelector('nearby');
 const nearbySelector = (state) => get(state, 'controls.nearby.enabled');
 
-const toggleNearbyTool = toggleControl.bind(null, 'nearby', null);
+//const toggleNearbyTool = toggleControl.bind(null, 'nearby', null);
+
+const toggleNearbyTool = () => {
+    return {
+        type: TOGGLE_CONTROL,
+        control: 'nearby',
+        property: null
+    };
+}
+
 const layerNodesExtracter = (groups) => {
     const layerNode = []
     groups.map(groupNode => {
@@ -122,7 +133,9 @@ const loadFeature = function(radius, center, radiusFeature,layerSelected) {
         });
     };
 };
-
+const clearLoadFeature = function(){
+    console.log("AA")
+}
 const selector = (state) => {
     return {
         radius: state.nearby.radius,
@@ -469,6 +482,16 @@ const nearbyResultLoadedEpic = (action$, {getState = () => {}}) =>
             ]);
         });
 
+const closeNearbyDock = (action$, {getState = () => {}}) =>
+    action$.ofType(TOGGLE_CONTROL)
+        .filter(() => {
+            return (getState().controls.nearby || {}) || false;
+        })
+        .switchMap(({nearbyState}) => {
+            return Rx.Observable.from([
+                changeDrawingStatus("clean", "", "nearbyResult", [], {}),
+            ]);
+        });
 export default {
     NearbyPlugin: assign(nearby, {
         BurgerMenu: {
@@ -488,6 +511,7 @@ export default {
     epics: {
         changeCenterEpic,
         changeRadiusEpic,
-        nearbyResultLoadedEpic
+        nearbyResultLoadedEpic,
+        closeNearbyDock
     }
 };
