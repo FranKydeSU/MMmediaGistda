@@ -4,10 +4,8 @@ import React from 'react';
 import axios from '../../libs/ajax';
 import Rx from 'rxjs';
 import PropTypes from 'prop-types';
-// import Dialog from '../../components/misc/Dialog';
 import Slider from 'react-nouislider';
 import circle from '@turf/circle';
-import Select from 'react-select';
 import Button from '../../components/misc/Button';
 import Dock from 'react-dock';
 import BorderLayout from '../../components/layout/BorderLayout'
@@ -26,6 +24,7 @@ import {
     groupsSelector
 } from '../../selectors/layers';
 
+// ค่าพิื้นฐานที่เรียกใช้คือ TOGGLE_CONTROL -> /reducers/controls.js
 export const TOGGLE_CONTROL = 'TOGGLE_CONTROL';
 
 createControlEnabledSelector('nearby');
@@ -37,7 +36,9 @@ const toggleNearbyTool = () => {
     return {
         type: TOGGLE_CONTROL,
         control: 'nearby',
-        property: null
+        property: null,
+        layer: {},
+        index: -1
     };
 }
 
@@ -133,8 +134,38 @@ const loadFeature = function(radius, center, radiusFeature,layerSelected) {
         });
     };
 };
+const featureRadius = function(radius,geometry){
+
+   return  {
+        type: "Feature",
+        geometry: geometry,
+        properties: {
+            isCircle: true,
+            radius: radius,
+            id: uuidv1(),
+            crs: "EPSG:3857",
+            isGeodesic: true
+        },
+        style: [
+            {
+                color: "#48C9B0",
+                opacity: 1,
+                weight: 5,
+                fillColor: "#ffffff",
+                fillOpacity: 0.3,
+                highlight: false,
+                type: "Circle",
+                title: "Near by",
+                id: uuidv1
+            }
+        ]
+    }
+
+}
 const clearLoadFeature = function(){
-    console.log("AA")
+    return (dispatch) => {
+        dispatch(featureLoaded([]));
+    }
 }
 const selector = (state) => {
     return {
@@ -174,6 +205,12 @@ function nearbyReducer(state = defaultState, action) {
     case 'NEARBY_FEATURE_LOADED': {
         return assign({}, state, {
             results: action.features
+        });
+    }
+    case TOGGLE_CONTROL: {
+        return assign({}, state, {
+            layer: action.layer,
+            layerIndex: action.index
         });
     }
     default: {
@@ -224,7 +261,6 @@ class NearbyDialog extends React.Component {
     onLayerChange = (idx) => {
         const getLayer = this.props.layersNode[idx]
         this.props.onChangeLayer(getLayer,idx)
-        this.props.onChangeRadius(1.0);
     };
 
     start = {
@@ -346,14 +382,6 @@ const changeCenterEpic = (action$, {getState = () => {}}) =>
             return (getState().controls.nearby || {}).enabled || false;
         })
         .switchMap(({center}) => {
-            const drawOptions = {
-                featureProjection: "EPSG:4326",
-                stopAfterDrawing: true,
-                editEnabled: false,
-                selectEnabled: false,
-                translateEnabled: false,
-                drawEnabled: false
-            };
             const radius = getState().nearby.radius;
             const layer = getState().nearby.layer;
             const geometry = circle(
@@ -365,30 +393,7 @@ const changeCenterEpic = (action$, {getState = () => {}}) =>
                 }
             ).geometry;
 
-            const feature =  {
-                type: "Feature",
-                geometry: geometry,
-                properties: {
-                    isCircle: true,
-                    radius: radius,
-                    id: uuidv1(),
-                    crs: "EPSG:3857",
-                    isGeodesic: true
-                },
-                style: [
-                    {
-                        color: "#48C9B0",
-                        opacity: 1,
-                        weight: 5,
-                        fillColor: "#ffffff",
-                        fillOpacity: 0.3,
-                        highlight: false,
-                        type: "Circle",
-                        title: "Near by",
-                        id: uuidv1
-                    }
-                ]
-            }
+            const feature = featureRadius(radius,geometry)
             return Rx.Observable.from([
                 changeCenter(center),
                 loadFeature(radius * 1000, center, feature,layer)
@@ -400,15 +405,6 @@ const changeRadiusEpic = (action$, {getState = () => {}}) =>
             return (getState().controls.nearby || {}).enabled || false;
         })
         .switchMap(({radius}) => {
-            const drawOptions = {
-                featureProjection: "EPSG:4326",
-                stopAfterDrawing: true,
-                editEnabled: false,
-                selectEnabled: false,
-                translateEnabled: false,
-                drawEnabled: false
-            };
-
             const center = getState().map.present.center;
             const layer = getState().nearby.layer;
             const geometry = circle(
@@ -419,39 +415,43 @@ const changeRadiusEpic = (action$, {getState = () => {}}) =>
                     units: 'kilometers'
                 }
             ).geometry;
-
-            const feature =  {
-                type: "Feature",
-                geometry: geometry,
-                properties: {
-                    isCircle: true,
-                    radius: radius,
-                    id: uuidv1(),
-                    crs: "EPSG:3857",
-                    isGeodesic: true
-                },
-                style: [
-                    {
-                        color: "#48C9B0",
-                        opacity: 1,
-                        weight: 5,
-                        fillColor: "#ffffff",
-                        fillOpacity: 0.3,
-                        highlight: false,
-                        type: "Circle",
-                        title: "Near by",
-                        id: uuidv1
-                    }
-                ]
-            }
-
-
+            const feature = featureRadius(radius,geometry)
             return Rx.Observable.from([
-                //changeDrawingStatus('drawOrEdit', 'Circle', 'nearby', [feature], drawOptions, style),
                 loadFeature(radius * 1000, center,feature,layer)
             ]);
         });
-
+const changeLayerEpic = (action$, {getState = () => {}}) =>
+        action$.ofType('SET_LAYER_FILTER')
+            .filter(() => {
+                return (getState().controls.nearby || {}).enabled || false;
+            })
+            .switchMap(({layer}) => {
+                const center = getState().map.present.center;
+                const radius = getState().nearby.radius
+                const geometry = circle(
+                    [ center.x, center.y ],
+                    radius,
+                    {
+                        steps: 100,
+                        units: 'kilometers'
+                    }
+                ).geometry;
+                const feature = featureRadius(radius,geometry)
+                return Rx.Observable.from([
+                    loadFeature(radius * 1000, center,feature,layer)
+                ]);
+            });
+const closeNearbyDock = (action$, {getState = () => {}}) =>
+            action$.ofType(TOGGLE_CONTROL)
+                .filter(() => {
+                    return (getState().controls.nearby || {}) || false;
+                })
+                .switchMap(({nearbyState}) => {
+                    return Rx.Observable.from([
+                        clearLoadFeature(),
+                        changeDrawingStatus("clean", "", "nearbyResult", [], {}),
+                    ]);
+                });
 const nearbyResultLoadedEpic = (action$, {getState = () => {}}) =>
     action$.ofType('NEARBY_FEATURE_LOADED')
         .filter(() => {
@@ -466,7 +466,6 @@ const nearbyResultLoadedEpic = (action$, {getState = () => {}}) =>
                 translateEnabled: false,
                 drawEnabled: false
             };
-            const layerSelected = getState().nearby.layer;
             const featureCollection = [
                 {
                     type: "FeatureCollection",
@@ -479,17 +478,6 @@ const nearbyResultLoadedEpic = (action$, {getState = () => {}}) =>
             ];
             return Rx.Observable.from([
                 changeDrawingStatus('drawOrEdit', 'Point', 'nearbyResult', featureCollection, drawOptions)
-            ]);
-        });
-
-const closeNearbyDock = (action$, {getState = () => {}}) =>
-    action$.ofType(TOGGLE_CONTROL)
-        .filter(() => {
-            return (getState().controls.nearby || {}) || false;
-        })
-        .switchMap(({nearbyState}) => {
-            return Rx.Observable.from([
-                changeDrawingStatus("clean", "", "nearbyResult", [], {}),
             ]);
         });
 export default {
@@ -512,6 +500,7 @@ export default {
         changeCenterEpic,
         changeRadiusEpic,
         nearbyResultLoadedEpic,
+        changeLayerEpic,
         closeNearbyDock
     }
 };
