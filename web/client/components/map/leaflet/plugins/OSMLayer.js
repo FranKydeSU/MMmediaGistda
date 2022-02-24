@@ -11,7 +11,7 @@ import L from 'leaflet';
 
 Layers.registerType('osm', (options) => {
     return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors',
+        attribution: '&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors, <a href="/terms">terms</a>',
         zoomOffset: options.zoomOffset || 0,
         maxNativeZoom: options.maxNativeZoom || 19,
         maxZoom: options.maxZoom || 23
