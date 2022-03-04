@@ -33,13 +33,6 @@ const selector = (state) => {
         layersInterval: state.fetchLayer.layersInterval
     };
 };
-const setLayerInterval = (intervalObj) => {
-    return {
-        type: 'FETCH:SET_LAYER_INTERVAL_WORK',
-        layer: intervalObj.layer,
-        id: intervalObj.id
-    };
-}
 const cancelInterval = (layer) => {
     return {
         type: 'LAYERS:CANCLE_INTERVAL',
@@ -104,72 +97,22 @@ const fetchLayer = connect(
 )(FetchLayerCmp);
 const updateSettingParamsEpic = (action$, store) =>
     action$.ofType('LAYERS:UPDATE_SETTINGS_PARAMS')
-        .switchMap(({ newParams = {}, update }) => {
+        .flatMap(({ newParams = {}, update }) => {
             const state = store.getState();
             const settings = layerSettingSelector(state);
             const layer = settings?.nodeType === 'layers' ? getLayerFromId(state, settings?.node) : null;
             if (newParams.timeInterval !== null && newParams.timeInterval && newParams.timeInterval !== 'Naver') {
-                const layerInterval = store.getState().fetchLayer.layersInterval
-                const timeInterval = newParams.timeInterval;
-                // const layerIdx = layerInterval.findIndex(layerWorking => layerWorking.layer.id === layer.id)
-                // console.log(layerIdx)
-                // if (layerIdx == -1) {
-                return Rx.Observable.interval(Number.parseInt(timeInterval) * 1000)
+                const timeInterval = (Number.parseInt(newParams.timeInterval) * 1000) || 1000;
+                return Rx.Observable.interval(timeInterval)
                     .map(() =>
                         refreshLayerVersion(layer.id)
                     )
                     .takeUntil(action$.filter(x => (x.type === 'LAYERS:CANCLE_INTERVAL' && x.layer.id == layer.id)))
-
-                // }
             } else {
                 return Rx.Observable.from([
                     cancelInterval(layer)
                 ])
             }
-            // if (newParams.timeInterval !== null && newParams.timeInterval) {
-            //     const layerIntervalList = store.getState().fetchLayer.layersInterval;
-            //     const timeInterval = newParams.timeInterval;
-            //     const findLayerIntervalByIndex = layerIntervalList.findIndex(layerWorking => layerWorking.layer.id === layer.id)
-            //     if (findLayerIntervalByIndex == -1) {
-
-            //         // const intervalId = setInterval(() => {
-            //         //     // Do some thing
-            //         //     return Rx.Observable.from([
-            //         //             refreshLayerVersion(layer.id)
-            //         //         ]);
-            //         // }, Number.parseInt(timeInterval) * 1000)
-            //         // console.log(intervalId)
-            //         return Rx.Observable.interval(5000).map((value)=>{
-            //             refreshLayerVersion(layer.id)
-            //         }).takeUntil(action$.ofType('LAYERS:CANCLE_INTERVAL'))
-            //         // return Rx.Observable.interval(5000).subscribe(() => {
-
-            //         // })
-            //         // return Rx.Observable.from([
-            //         //     refreshLayerVersion(layer.id)
-            //         // ]);
-            //     }else{        
-            //         if(timeInterval !== 'Naver'){
-            //         const intervalId = setInterval(() => {
-
-            //             }, Number.parseInt(timeInterval) * 1000)
-            //         return Rx.Observable.from([
-            //                 setLayerInterval({
-            //                     id: intervalId,
-            //                     layer: layer
-            //                 })
-            //             ]);
-            //         }else{
-            //             // clearInterval(layerIntervalList[findLayerIntervalByIndex].id)
-            //             return Rx.Observable.from([
-            //                 cancelInterval()
-            //             ])
-            //         }
-            //     }
-            // }
-            // return Rx.Observable.from([
-            //     refreshLayerVersion(layer.id)
-            // ])
         })
 export default {
     FetchLayersPlugin: assign(fetchLayer, {}),
