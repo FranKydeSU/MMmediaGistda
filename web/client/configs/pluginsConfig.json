@@ -282,6 +282,13 @@
       ]
     },
     {
+      "name": "FetchLayers",
+      "glyph": "",
+      "title": "plugins.FetchLayers.title",
+      "description": "plugins.FetchLayers.description",
+      "dependencies": []
+    },
+    {
       "name": "Routing",
       "glyph": "search",
       "title": "plugins.Routing.title",

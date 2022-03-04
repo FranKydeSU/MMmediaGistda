@@ -26,6 +26,7 @@ export default {
         NavMenu: require('./plugins/NavMenu').default,
         NearbyPlugin: require('./plugins/Nearby').default,
         RoutingPlugin: require('./plugins/Routing').default,
+        FetchLayerPlugin: require('./plugins/FetchLayers').default,
         // framework plugins
         AddGroupPlugin: require('../plugins/AddGroup').default,
         AnnotationsPlugin: require('../plugins/Annotations').default,

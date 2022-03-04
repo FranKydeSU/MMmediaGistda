@@ -20,6 +20,7 @@ export default {
         MapLoadingPlugin: require('../plugins/MapLoading').default,
         MapPlugin: require('../plugins/Map').default,
         NearbyPlugin: require('./plugins/Nearby').default,
+        FetchLayerPlugin: require('./plugins/FetchLayers').default,
         OmniBarPlugin: require('../plugins/OmniBar').default,
         RoutingPlugin: require('./plugins/Routing').default,
         SearchPlugin: require('../plugins/Search').default,
