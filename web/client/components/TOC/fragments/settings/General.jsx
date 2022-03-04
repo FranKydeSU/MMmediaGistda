@@ -59,6 +59,13 @@ class General extends React.Component {
         const translations = isObject(this.props.element.title) ? assign({}, this.props.element.title) : { 'default': this.props.element.title };
         const { hideTitleTranslations = false } = this.props.pluginCfg;
 
+        const refrashIntervalItems = [
+            { value: null, label: 'Naver'},
+            { value: '5',label: '5'},
+            { value: '10',label: '10'},
+            { value: '15',label: '15'},
+            { value: '30',label: '30'}
+        ]
         const tooltipItems = [
             { value: "title", label: getMessageById(this.context.messages, "layerProperties.tooltip.title") },
             { value: "description", label: getMessageById(this.context.messages, "layerProperties.tooltip.description") },
@@ -181,10 +188,23 @@ class General extends React.Component {
                                     value={find(tooltipPlacementItems, o => o.value === (this.props.element.tooltipPlacement || "top"))}
                                     onChange={(item) => { this.updateEntry("tooltipPlacement", { target: { value: item.value || "top" } }); }}
                                 />
-                            </Col>
+                            </Col>   
                         </div>
                     }
-
+                    {/* MM ADD */}
+                    <div style={{ width: "100%" }}>
+                            <Col xs={12} sm={12} className="first-selectize">
+                                <br />
+                                <label key="refrash-label" className="control-label">Refrash Interval (ms)</label>
+                                <Select
+                                    clearable={false}
+                                    key="tooltips-dropdown"
+                                    options={refrashIntervalItems}
+                                    value={find(refrashIntervalItems, o => o.value === (this.props.element.timeInterval || "Naver"))}
+                                    onChange={(item) => { this.setLayerInterval("timeInterval", { target: { value: item.value || "Naver" } }); }}
+                                />
+                            </Col>
+                    </div>
                 </form>
             </Grid>
         );
@@ -193,6 +213,8 @@ class General extends React.Component {
     supportedNameEditLayerTypes = ['wms'];
 
     updateEntry = (key, event) => isObject(key) ? this.props.onChange(key) : this.props.onChange(key, event.target.value);
+    
+    setLayerInterval = (key, event) => isObject(key) ? this.props.onChange(key) : this.props.onChange(key, event.target.value);
 
     updateTranslation = (key, event) => {
         const title = (key === 'default' && isString(this.props.element.title))
