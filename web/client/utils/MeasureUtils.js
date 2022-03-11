@@ -70,7 +70,8 @@ export const CONVERSION_RATE = {
         "km": 0.001,
         "yd": 1.0936132983377,
         "mi": 0.000621371,
-        "nm": 0.000539956803
+        "nm": 0.000539956803,
+        "wah": 0.5
     },
     "km": {
         "ft": 3280.84,
@@ -118,7 +119,10 @@ export const CONVERSION_RATE = {
         "sqkm": 1.0E-6,
         "sqyd": 1.196,
         "sqmi": 3.8610215854245e-7,
-        "sqnm": 2.91181e-7
+        "sqnm": 2.91181e-7,
+        "sqwah": 0.25,
+        "sqngan": 0.0025, 
+        "sqrai": 0.000625
     },
     "sqkm": {
         "sqft": 10763910,

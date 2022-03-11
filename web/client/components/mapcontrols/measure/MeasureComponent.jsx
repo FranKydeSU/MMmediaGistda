@@ -110,14 +110,19 @@ class MeasureComponent extends React.Component {
             {value: "m", label: "m"},
             {value: "km", label: "km"},
             {value: "mi", label: "mi"},
-            {value: "nm", label: "nm"}
+            {value: "nm", label: "nm"},
+            {value: "wah", label: "วา"},
         ],
         uomAreaValues: [
             {value: "sqft", label: "ft²"},
             {value: "sqm", label: "m²"},
             {value: "sqkm", label: "km²"},
             {value: "sqmi", label: "mi²"},
-            {value: "sqnm", label: "nm²"}
+            {value: "sqnm", label: "nm²"},
+            // THAI Measure metric
+            {value: "sqwah", label: "วา"},
+            {value: "sqngan", label: "งาน"},
+            {value: "sqrai", label: "ไร่"},
         ],
         id: "measure-result-panel",
         uom: {
@@ -198,7 +203,8 @@ class MeasureComponent extends React.Component {
                                 </strong></h3>
                             </span>
                         </Col>}
-                        <Col xs={6}>
+                        <Col xs={6} md={12}>
+                            <span>หน่วยระยะทาง</span>
                             <DropdownList
                                 disabled={disabled}
                                 value={this.props.uom.length.label}
@@ -214,7 +220,7 @@ class MeasureComponent extends React.Component {
                 </Row>}
                 {this.props.areaMeasureEnabled && <Row>
                     <FormGroup style={{display: 'flex', alignItems: 'center'}}>
-                        {this.props.areaMeasureValueEnabled && <Col xs={6}>
+                        {this.props.areaMeasureValueEnabled && <Col xs={6} md={12}>
                             <span>{this.props.areaLabel}: </span>
                             <span id="measure-area-res" className="measure-value">
                                 <h3><strong>
@@ -222,7 +228,21 @@ class MeasureComponent extends React.Component {
                                 </strong></h3>
                             </span>
                         </Col>}
-                        <Col xs={6}>
+                        <Col xs={6} md={6}>
+                            <span>หน่วยระยะทาง</span>
+                            <DropdownList
+                                disabled={disabled}
+                                value={this.props.uom.length.label}
+                                onChange={(value) => {
+                                    this.props.onChangeUom("length", value, this.props.uom);
+                                }}
+                                data={this.props.uomLengthValues}
+                                textField="label"
+                                valueField="value"
+                            />
+                        </Col>
+                        <Col xs={6} md={6}>
+                            <span>หน่วยของพื้นที่</span>
                             <DropdownList
                                 disabled={disabled}
                                 value={this.props.uom.area.label}
