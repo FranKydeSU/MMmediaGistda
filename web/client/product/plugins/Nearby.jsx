@@ -40,7 +40,6 @@ const toggleNearbyTool = () => {
         index: -1
     };
 }
-
 const layerNodesExtracter = (groups) => {
     const layerNode = []
     groups.map(groupNode => {
@@ -48,7 +47,6 @@ const layerNodesExtracter = (groups) => {
     })
     return layerNode
 }
-
 const setRadius = function (radius) {
     return {
         type: 'SET_NEARBY_RADIUS',
@@ -66,6 +64,11 @@ const setPage = function (pageNumber) {
     return {
         type: 'NEARBY:CHANGE_PAGE_NUMBER',
         page: pageNumber
+    }
+}
+const lockCenter = function () {
+    return {
+        type: 'NEARBY:CENTER_MAP_LOCK',
     }
 }
 const changeCenter = function (center) {
@@ -174,6 +177,8 @@ const selector = (state) => {
     return {
         radius: state.nearby.radius,
         center: state.nearby.center,
+        centerLocked: state.nearby.centerLocked,
+        centerFixed: state.nearby.centerFixed,
         results: state.nearby.results,
         layer: state.nearby.layer,
         layerIndex: state.nearby.layerIndex,
@@ -186,6 +191,8 @@ const selector = (state) => {
 const defaultState = {
     radius: 1.0,
     center: null,
+    centerLocked: false,
+    centerFixed: {},
     results: [],
     nearbyLists: [],
     layer: {},
@@ -216,8 +223,15 @@ function nearbyReducer(state = defaultState, action) {
             return assign({}, state, {
                 nearbyLists: action.features,
                 results: action.features.length > state.pageSize ? action.features.slice(0, state.pageSize) : action.features,
-                totalPage: action.features.length > state.pageSize ? Math.floor(action.features.length / state.pageSize) : 1
+                totalPage: action.features.length > state.pageSize ? Math.floor(action.features.length / state.pageSize) : 1,
+                currentPage: 1
             });
+        }
+        case 'NEARBY:CENTER_MAP_LOCK': {
+            return assign({}, state, {
+                centerFixed: state.center,
+                centerLocked: !state.centerLocked
+            })
         }
         case 'NEARBY:CHANGE_PAGE_NUMBER': {
             return assign({}, state, {
@@ -243,6 +257,9 @@ class NearbyDialog extends React.Component {
         radius: PropTypes.number,
         results: PropTypes.array,
         nearbyLists: PropTypes.array,
+        centerLocked: PropTypes.bool,
+        centerFixed: PropTypes.object,
+        onLockCenter: PropTypes.func,
         onClose: PropTypes.func,
         onChangeRadius: PropTypes.func,
         onChangeLayer: PropTypes.func,
@@ -259,6 +276,8 @@ class NearbyDialog extends React.Component {
     static defaultProps = {
         show: false,
         radius: 1.00,
+        centerLocked: false,
+        centerFixed: {},
         results: [],
         nearbyLists: [],
         dockProps: {
@@ -289,6 +308,10 @@ class NearbyDialog extends React.Component {
     onLayerChange = (idx) => {
         const getLayer = this.props.layersNode[idx]
         this.props.onChangeLayer(getLayer, idx)
+    };
+
+    onLockCenter = () => {
+        this.props.onLockCenter()
     };
 
     changePage = (pageNo) => {
@@ -354,7 +377,18 @@ class NearbyDialog extends React.Component {
                                                 setIndex={this.onLayerChange}
                                             ></LayerSelector>
                                         </div>
-                                        <label style={{ marginTop: '15px' }}>Radius (km)</label>
+                                        <div className="btn-toolbar" style={{ marginTop: '10px' }}>
+                                            <div className="row">
+                                                <div className="col-md-6">
+                                                    <label>Radius (km)</label>
+                                                </div>
+                                                <div className="col-md-6 text-right">
+                                                    <button onClick={this.onLockCenter} style={{ float: 'right' }} className={this.props.centerLocked ? 'btn btn-xs active' : 'btn btn-xs'}>
+                                                        <Glyphicon glyph="lock" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                         <div className="mapstore-slider with-tooltip">
                                             <Slider
                                                 tooltips
@@ -371,17 +405,17 @@ class NearbyDialog extends React.Component {
                                             <div className="locations">
                                                 {items}
                                             </div>
-                                            { items.length > 0 ?  (
-                                                   <div style={{textAlign:'center' }}>
-                                                   <Pagination
-                                                       prev next first last ellipsis boundaryLinks
-                                                       bsSize="small"
-                                                       items={this.props.totalPage}
-                                                       maxButtons={5}
-                                                       activePage={this.props.currentPage}
-                                                       onSelect={this.changePage}
-                                                   />
-                                               </div>
+                                            {items.length > 0 ? (
+                                                <div style={{ textAlign: 'center' }}>
+                                                    <Pagination
+                                                        prev next first last ellipsis boundaryLinks
+                                                        bsSize="small"
+                                                        items={this.props.totalPage}
+                                                        maxButtons={5}
+                                                        activePage={this.props.currentPage}
+                                                        onSelect={this.changePage}
+                                                    />
+                                                </div>
                                             ) : (<div></div>)
                                             }
                                         </div>
@@ -418,6 +452,7 @@ const nearby = connect(
         onClose: toggleNearbyTool,
         onChangeRadius: setRadius,
         onChangeLayer: setLayer,
+        onLockCenter: lockCenter,
         onChangePage: setPage,
     },
     null,
@@ -434,8 +469,13 @@ const changeCenterEpic = (action$, { getState = () => { } }) =>
         .switchMap(({ center }) => {
             const radius = getState().nearby.radius;
             const layer = getState().nearby.layer;
+            const centerFixed = getState().nearby.centerFixed
+            const centerLocked = getState().nearby.centerLocked
             const geometry = circle(
-                [center.x, center.y],
+                [
+                    centerLocked ? centerFixed.x : center.x,
+                    centerLocked ? centerFixed.y : center.y
+                ],
                 radius,
                 {
                     steps: 100,
@@ -444,10 +484,16 @@ const changeCenterEpic = (action$, { getState = () => { } }) =>
             ).geometry;
 
             const feature = featureRadius(radius, geometry)
-            return Rx.Observable.from([
-                changeCenter(center),
-                loadFeature(radius * 1000, center, feature, layer)
-            ]);
+            if (centerLocked) {
+                return Rx.Observable.empty()
+            } else {
+                return Rx.Observable.from([
+                    changeCenter(center),
+                    loadFeature(radius * 1000, center, feature, layer)
+                ]);
+            }
+
+
         });
 const changeRadiusEpic = (action$, { getState = () => { } }) =>
     action$.ofType('SET_NEARBY_RADIUS')
@@ -456,9 +502,14 @@ const changeRadiusEpic = (action$, { getState = () => { } }) =>
         })
         .switchMap(({ radius }) => {
             const center = getState().map.present.center;
+            const centerFixed = getState().nearby.centerFixed
+            const centerLocked = getState().nearby.centerLocked
             const layer = getState().nearby.layer;
             const geometry = circle(
-                [center.x, center.y],
+                [
+                    centerLocked ? centerFixed.x : center.x,
+                    centerLocked ? centerFixed.y : center.y
+                ],
                 radius,
                 {
                     steps: 100,
@@ -535,7 +586,7 @@ const nearbyResultLoadedEpic = (action$, { getState = () => { } }) =>
                     id: uuidv1(),
                     geometry: null,
                     properties: uuidv1(),
-                    features: [...features,radiusFeature],
+                    features: [...features, radiusFeature],
                 },
             ];
             return Rx.Observable.from([
@@ -558,8 +609,13 @@ const changePageEpic = (action$, { getState = () => { } }) =>
             };
             const center = getState().map.present.center;
             const radius = getState().nearby.radius
+            const centerFixed = getState().nearby.centerFixed
+            const centerLocked = getState().nearby.centerLocked
             const geometry = circle(
-                [center.x, center.y],
+                [
+                    centerLocked ? centerFixed.x : center.x,
+                    centerLocked ? centerFixed.y : center.y
+                ],
                 radius,
                 {
                     steps: 100,
@@ -575,7 +631,7 @@ const changePageEpic = (action$, { getState = () => { } }) =>
                     id: uuidv1(),
                     geometry: null,
                     properties: uuidv1(),
-                    features: [...features,radiusFeature],
+                    features: [...features, radiusFeature],
                 },
             ];
             return Rx.Observable.from([
