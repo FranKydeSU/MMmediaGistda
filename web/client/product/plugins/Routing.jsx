@@ -6,8 +6,12 @@ import Rx from "rxjs";
 import { createSelector } from "reselect";
 import PropTypes from "prop-types";
 import { get } from "lodash";
+import Dock from "react-dock";
+import ContainerDimensions from "react-container-dimensions";
+import Button from "../../components/misc/Button";
 import Dialog from "../../components/misc/Dialog";
 import Loader from "../../components/misc/Loader";
+import BorderLayout from "../../components/layout/BorderLayout";
 import { setControlProperty, toggleControl } from "../../actions/controls";
 import { Glyphicon } from "react-bootstrap";
 import { createControlEnabledSelector } from "../../selectors/controls";
@@ -21,34 +25,34 @@ const routingSelector = (state) => get(state, "controls.routing.enabled");
 
 const toggleRoutingTool = toggleControl.bind(null, "routing", null);
 
-const LONGDO_API_KEY = "98034a5f21623ae53d3802af7b86fddf"
+const LONGDO_API_KEY = "98034a5f21623ae53d3802af7b86fddf";
 
-const routePointStyle = function (type)  {
+const routePointStyle = function (type) {
     switch (type) {
-        case 'START':
+        case "START":
             return {
-                    iconGlyph: "map-marker",
-                    iconShape: "square",
-                    iconColor: "blue",
-                    highlight: false,
-                    id: uuidv1(),
-                }
-        case 'END':
+                iconGlyph: "map-marker",
+                iconShape: "square",
+                iconColor: "blue",
+                highlight: false,
+                id: uuidv1(),
+            };
+        case "END":
             return {
-                    iconGlyph: "stop-circle",
-                    iconShape: "square",
-                    iconColor: "blue",
-                    highlight: false,
-                    id: uuidv1(),
-            }
+                iconGlyph: "stop-circle",
+                iconShape: "square",
+                iconColor: "blue",
+                highlight: false,
+                id: uuidv1(),
+            };
         default:
             return {
-                    iconGlyph: "map-marker",
-                    iconShape: "square",
-                    iconColor: "blue",
-                    highlight: false,
-                    id: uuidv1(),
-                }
+                iconGlyph: "map-marker",
+                iconShape: "square",
+                iconColor: "blue",
+                highlight: false,
+                id: uuidv1(),
+            };
     }
 };
 const featureLoaded = function (features) {
@@ -58,10 +62,6 @@ const featureLoaded = function (features) {
     };
 };
 const searchRouting = (pointList) => {
-    if (!pointList[0].lon || !pointList[1].lon) {
-        document.getElementById("find-route").innerHTML = "ค้นหาเส้นทาง";
-        return;
-    }
     return (dispatch) => {
         let geoJsonData = new Promise((resolve, reject) => {
             setTimeout(() => {
@@ -84,13 +84,20 @@ const searchRouting = (pointList) => {
         geoJsonData.then((value) => {
             let routeGeoJson = value.data.features;
             let routeLengthObj = routeGeoJson.length;
-            let lastRouteCoordinates = routeGeoJson[routeLengthObj - 1].geometry.coordinates.length;
-            let lastRouteLon = routeGeoJson[routeLengthObj - 1].geometry.coordinates[lastRouteCoordinates - 1][0];
-            let lastRouteLat = routeGeoJson[routeLengthObj - 1].geometry.coordinates[lastRouteCoordinates - 1][1];
+            let lastRouteCoordinates =
+                routeGeoJson[routeLengthObj - 1].geometry.coordinates.length;
+            let lastRouteLon =
+                routeGeoJson[routeLengthObj - 1].geometry.coordinates[
+                lastRouteCoordinates - 1
+                ][0];
+            let lastRouteLat =
+                routeGeoJson[routeLengthObj - 1].geometry.coordinates[
+                lastRouteCoordinates - 1
+                ][1];
             if (pointList.length === 2) {
                 routeGeoJson.push({
                     type: "Feature",
-                    style: [routePointStyle('START')],
+                    style: [routePointStyle("START")],
                     geometry: {
                         type: "Point",
                         coordinates: [
@@ -101,18 +108,19 @@ const searchRouting = (pointList) => {
                 });
                 routeGeoJson.push({
                     type: "Feature",
-                    style: [routePointStyle('END')],
+                    style: [routePointStyle("END")],
                     geometry: {
                         type: "Point",
                         coordinates: [lastRouteLon, lastRouteLat],
                     },
                 });
                 dispatch(featureLoaded(routeGeoJson));
-                document.getElementById("find-route").innerHTML = "ค้นหาเส้นทาง";
+                document.getElementById("find-route").innerHTML =
+                    "ค้นหาเส้นทาง";
             } else {
                 routeGeoJson.push({
                     type: "Feature",
-                    style: [routePointStyle('START')],
+                    style: [routePointStyle("START")],
                     geometry: {
                         type: "Point",
                         coordinates: [
@@ -123,7 +131,7 @@ const searchRouting = (pointList) => {
                 });
                 routeGeoJson.push({
                     type: "Feature",
-                    style: [routePointStyle('START')],
+                    style: [routePointStyle("START")],
                     geometry: {
                         type: "Point",
                         coordinates: [lastRouteLon, lastRouteLat],
@@ -151,12 +159,22 @@ const searchRouting = (pointList) => {
                         }
                     );
                     getMoreGeoJsonData.then((value) => {
-                        lastRouteCoordinates = value.data.features[value.data.features.length - 1].geometry.coordinates.length;
-                        lastRouteLon = value.data.features[value.data.features.length - 1].geometry.coordinates[lastRouteCoordinates - 1][0];
-                        lastRouteLat = value.data.features[value.data.features.length - 1].geometry.coordinates[lastRouteCoordinates - 1][1];
+                        lastRouteCoordinates =
+                            value.data.features[value.data.features.length - 1]
+                                .geometry.coordinates.length;
+                        lastRouteLon =
+                            value.data.features[value.data.features.length - 1]
+                                .geometry.coordinates[
+                            lastRouteCoordinates - 1
+                            ][0];
+                        lastRouteLat =
+                            value.data.features[value.data.features.length - 1]
+                                .geometry.coordinates[
+                            lastRouteCoordinates - 1
+                            ][1];
                         routeGeoJson.push({
                             type: "Feature",
-                            style: [routePointStyle('START')],
+                            style: [routePointStyle("START")],
                             geometry: {
                                 type: "Point",
                                 coordinates: [lastRouteLon, lastRouteLat],
@@ -165,7 +183,8 @@ const searchRouting = (pointList) => {
                         routeGeoJson.push(...value.data.features);
                         if (i + 1 === pointList.length) {
                             dispatch(featureLoaded(routeGeoJson));
-                            document.getElementById("find-route").innerHTML = "ค้นหาเส้นทาง";
+                            document.getElementById("find-route").innerHTML =
+                                "ค้นหาเส้นทาง";
                         }
                     });
                 }
@@ -188,9 +207,9 @@ const removePoint = (index) => {
 };
 const swapPoint = function () {
     return {
-        type: 'ROUTING_SWAP_POINT'
-    }
-}
+        type: "ROUTING_SWAP_POINT",
+    };
+};
 const clearSearchRouting = function (props) {
     return {
         type: "ROUTING_FEATURE_CLEAR",
@@ -230,9 +249,13 @@ const searchLoaded = function (index, result) {
 };
 const searchPointForRouting = function (index, value, center) {
     return (dispatch) => {
-        return instance.get(`https://search.longdo.com/mapsearch/json/search?lat=${center.x}&lon=${center.y}&keyword=${value}&locale=th&key=${LONGDO_API_KEY}`).then((response) => {
-             dispatch(searchLoaded(index, response.data));
-        });
+        return instance
+            .get(
+                `https://search.longdo.com/mapsearch/json/search?lat=${center.x}&lon=${center.y}&keyword=${value}&locale=th&key=${LONGDO_API_KEY}`
+            )
+            .then((response) => {
+                dispatch(searchLoaded(index, response.data));
+            });
     };
 };
 
@@ -279,9 +302,9 @@ function routingReducer(state = defaultState, action) {
             return assign({}, state, {});
         }
         case "ROUTING_SWAP_POINT": {
-            return assign({},state,{
-                pointList: state.pointList.reverse()
-            })
+            return assign({}, state, {
+                pointList: state.pointList.reverse(),
+            });
         }
         case "ROUTING_CHANGE_POINT_LIST": {
             const splited = action.value.trim().split(",");
@@ -347,6 +370,7 @@ function routingReducer(state = defaultState, action) {
 class RoutingDialog extends React.Component {
     static propTypes = {
         show: PropTypes.bool,
+        dockProps: PropTypes.object,
         loading: PropTypes.bool,
         pointList: PropTypes.array,
         features: PropTypes.array,
@@ -362,6 +386,13 @@ class RoutingDialog extends React.Component {
 
     static defaultProps = {
         show: false,
+        dockProps: {
+            dimMode: "none",
+            size: 0.3,
+            fluid: true,
+            position: "right",
+            zIndex: 1030,
+        },
         loading: false,
         pointList: [
             { lat: null, lon: null },
@@ -379,8 +410,8 @@ class RoutingDialog extends React.Component {
     };
 
     onSwapPoint = () => {
-        this.props.onSwapPoint()
-    }
+        this.props.onSwapPoint();
+    };
 
     onRemovePoint = (index) => {
         return () => {
@@ -389,8 +420,14 @@ class RoutingDialog extends React.Component {
     };
 
     onSearch = () => {
-        document.getElementById("find-route").innerHTML = "กำลังค้นหา...";
-        this.props.onSearch(this.props.pointList);
+        const pointEmptyValidate = this.props.pointList.find((point) => { if (!point.lat || !point.lon) { return point } })
+        if (pointEmptyValidate && !pointEmptyValidate.lat) {
+            document.getElementById("find-route").innerHTML = "ค้นหาเส้นทาง";
+            return
+        } else {
+            document.getElementById("find-route").innerHTML = "กำลังค้นหา...";
+            this.props.onSearch(this.props.pointList);
+        }
     };
 
     onClearSearch = () => {
@@ -465,7 +502,6 @@ class RoutingDialog extends React.Component {
 
     routingGuideList = {
         marginTop: "10px",
-        maxHeight: "300px",
         paddingRight: "10px",
         overflow: "auto",
     };
@@ -498,25 +534,25 @@ class RoutingDialog extends React.Component {
     };
 
     resultListStyle = {
-        borderLeft: "2px solid #dddddd",
-        borderRight: "2px solid #dddddd",
+        borderLeft: "1px solid #dddddd",
+        borderRight: "1px solid #dddddd",
         position: "absolute",
         background: "white",
-        maxHeight: "300px",
+        maxHeight: "600px",
         overflowY: "auto",
-        width: "94.5%",
+        width: "90.5%",
         zIndex: 10,
-        marginTop: "6.5%",
+        marginTop: "11.5%",
     };
     resultListStyleWithRemove = {
-        borderLeft: "2px solid #dddddd",
-        borderRight: "2px solid #dddddd",
+        borderLeft: "1px solid #dddddd",
+        borderRight: "1px solid #dddddd",
         position: "absolute",
         background: "white",
-        maxHeight: "300px",
+        maxHeight: "600px",
         overflowY: "auto",
-        width: "89.5%",
-        marginTop: "6.5%",
+        width: "80.5%",
+        marginTop: "12.1%",
         zIndex: "10",
     };
 
@@ -524,6 +560,37 @@ class RoutingDialog extends React.Component {
         padding: "6px 12px",
         cursor: "pointer",
     };
+
+    renderHeader() {
+        return (
+            <div style={{ width: "100%" }}>
+                <div style={{ display: "flex", alignItems: "center" }}>
+                    <div>
+                        <Button className="square-button no-events">
+                            <Glyphicon glyph="record" />
+                        </Button>
+                    </div>
+                    <div
+                        style={{
+                            flex: "1 1 0%",
+                            padding: 8,
+                            textAlign: "center",
+                        }}
+                    >
+                        <h4>Routes</h4>
+                    </div>
+                    <div>
+                        <Button
+                            className="square-button no-border"
+                            onClick={this.onClose}
+                        >
+                            <Glyphicon glyph="1-close" />
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     render() {
         const pointList = [];
@@ -633,82 +700,87 @@ class RoutingDialog extends React.Component {
         }
 
         return this.props.show ? (
-            <Dialog
-                id="routing-dialog"
-                style={this.dialogStyle}
-                start={this.start}
-            >
-                <div key="routing-header" role="header">
-                    <Glyphicon glyph="search" />
-                    &nbsp;Routing
-                    <button
-                        key="close"
-                        onClick={this.onClose}
-                        className="close"
-                    >
-                        <Glyphicon glyph="1-close" />
-                    </button>
-                </div>
-                <div key="routing-body" role="body">
-                    {pointList}
-                    <br />
-                    <div
-                        style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                        }}
-                    >
-                        <div>
-                            <button
-                                key="add-point"
-                                className="btn btn-londo-circle-sm"
-                                onClick={this.onAddPoint}
-                            >
-                                <Glyphicon glyph="plus" />
-                            </button>
-                            <button
-                                key="swap-point"
-                                className="btn btn-londo-circle-sm"
-                                style={{ marginLeft: "5px" }}
-                                onClick={this.onSwapPoint}
-                            >
-                                <Glyphicon glyph="sort" />
-                            </button>
-                            <button
-                                key="setting"
-                                className="btn btn-londo-circle-sm"
-                                style={{ marginLeft: "5px" }}
-                            >
-                                <Glyphicon glyph="cog" />
-                            </button>
-                        </div>
-                        <div>
-                            <button
-                                key="clear-routing"
-                                onClick={this.onClearSearch}
-                                className="btn btn-longdo-outline-default btn-rounded"
-                                style={{ minWidth: "90px", marginRight: "5px" }}
-                            >
-                                ล้าง
-                            </button>
-                            <button
-                                key="search-routing"
-                                onClick={this.onSearch}
-                                className="btn btn-longdo-outline-info btn-rounded"
-                                style={{ minWidth: "100px" }}
-                                id="find-route"
-                            >
-                                ค้นหาเส้นทาง
-                            </button>
-                        </div>
-                    </div>
-                    {guideList.length !== 0 ? (
-                        this.renderGuideList(guideList, eastimateTime)
-                    ) : (
-                        <div></div>
-                    )}
-                </div>
-            </Dialog>
+            <ContainerDimensions>
+                {({ width }) => (
+                    <span className="react-dock-no-resize">
+                        <Dock
+                            fluid
+                            dockStyle={this.props.dockStyle}
+                            {...this.props.dockProps}
+                            isVisible={this.props.show}
+                            size={330 / width > 1 ? 1 : 330 / width}
+                        >
+                            <BorderLayout header={this.renderHeader()}>
+                                <div key="routing-body" role="body" style={{ padding: '10px' }}>
+                                    {pointList}
+                                    <br />
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                        }}
+                                    >
+                                        <div>
+                                            <button
+                                                key="add-point"
+                                                className="btn btn-londo-circle-sm"
+                                                onClick={this.onAddPoint}
+                                            >
+                                                <Glyphicon glyph="plus" />
+                                            </button>
+                                            <button
+                                                key="swap-point"
+                                                className="btn btn-londo-circle-sm"
+                                                style={{ marginLeft: "5px" }}
+                                                onClick={this.onSwapPoint}
+                                            >
+                                                <Glyphicon glyph="sort" />
+                                            </button>
+                                            <button
+                                                key="setting"
+                                                className="btn btn-londo-circle-sm"
+                                                style={{ marginLeft: "5px" }}
+                                            >
+                                                <Glyphicon glyph="cog" />
+                                            </button>
+                                        </div>
+                                        <div>
+                                            <button
+                                                key="clear-routing"
+                                                onClick={this.onClearSearch}
+                                                className="btn btn-longdo-outline-default btn-rounded"
+                                                style={{
+                                                    minWidth: "90px",
+                                                    marginRight: "5px",
+                                                }}
+                                            >
+                                                ล้าง
+                                            </button>
+                                            <button
+                                                key="search-routing"
+                                                onClick={this.onSearch}
+                                                className="btn btn-longdo-outline-info btn-rounded"
+                                                style={{ minWidth: "100px" }}
+                                                id="find-route"
+                                            >
+                                                ค้นหาเส้นทาง
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {guideList.length !== 0 ? (
+                                        this.renderGuideList(
+                                            guideList,
+                                            eastimateTime
+                                        )
+                                    ) : (
+                                        <div></div>
+                                    )}
+                                </div>
+                            </BorderLayout>
+                        </Dock>
+                    </span>
+                )}
+            </ContainerDimensions>
         ) : null;
     }
 }
@@ -839,7 +911,6 @@ const clearRoutingResult = (action$, { getState = () => { } }) =>
                 changeDrawingStatus("clean", "", "routingResult", [], {}),
             ]);
         });
-
 const routingClickGuideEpic = (action$, { getState = () => { } }) =>
     action$
         .ofType("ROUTING_CLICK_GUIDE")
@@ -866,6 +937,16 @@ const routingClickGuideEpic = (action$, { getState = () => { } }) =>
                     { nearest: true }
                 ),
             ]);
+        });
+const onSwapRoutingEpic = (action$, { getState = () => { } }) =>
+    action$
+        .ofType("ROUTING_SWAP_POINT")
+        .filter(() => {
+            return (getState().controls.routing || {}).enabled || false;
+        })
+        .switchMap(({ }) => {
+            const pointList = getState().pointList;
+            console.log(getState());
         });
 
 const routingChangePointInputEpic = (action$, { getState = () => { } }) =>
@@ -902,6 +983,7 @@ export default {
         routingResultLoadedEpic,
         routingClickGuideEpic,
         routingChangePointInputEpic,
+        onSwapRoutingEpic,
         clearRoutingResult,
     },
 };
