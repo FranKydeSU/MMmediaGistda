@@ -1,263 +1,48 @@
-import uuidv1 from "uuid/v1";
+
 import assign from "object-assign";
 import React from "react";
 import { connect } from "react-redux";
-import Rx from "rxjs";
 import { createSelector } from "reselect";
 import PropTypes from "prop-types";
 import { get } from "lodash";
 import Dock from "react-dock";
 import ContainerDimensions from "react-container-dimensions";
 import Button from "../../components/misc/Button";
-import Dialog from "../../components/misc/Dialog";
 import Loader from "../../components/misc/Loader";
 import BorderLayout from "../../components/layout/BorderLayout";
 import { setControlProperty, toggleControl } from "../../actions/controls";
-import { Glyphicon } from "react-bootstrap";
+import { Glyphicon,Row, Col } from "react-bootstrap";
 import { createControlEnabledSelector } from "../../selectors/controls";
-import { changeDrawingStatus } from "../../actions/draw";
-import { zoomToExtent } from "../../actions/map";
-const axios = require("axios");
-const instance = axios.create();
+
+// Action
+import {
+    addPoint,
+    changePointInput,
+    clearSearchRouting,
+    removePoint,
+    swapPoint,
+    searchRouting,
+    clickGuide,
+    clickSearchResult
+} from './routing/actions/routing'
+// Style
+import routingStyle from './routing/routingStyle';
+
+import { routingReducer } from './routing/reducers/routingReducer'
+
+import {
+    clearRoutingResult,
+    onSwapRoutingEpic,
+    routingChangePointInputEpic,
+    routingClickGuideEpic,
+    routingResultLoadedEpic
+} from './routing/epic/routingEpic'
+
 
 createControlEnabledSelector("routing");
 const routingSelector = (state) => get(state, "controls.routing.enabled");
 
 const toggleRoutingTool = toggleControl.bind(null, "routing", null);
-
-const LONGDO_API_KEY = "98034a5f21623ae53d3802af7b86fddf";
-
-const routePointStyle = function (type) {
-    switch (type) {
-        case "START":
-            return {
-                iconGlyph: "map-marker",
-                iconShape: "square",
-                iconColor: "blue",
-                highlight: false,
-                id: uuidv1(),
-            };
-        case "END":
-            return {
-                iconGlyph: "stop-circle",
-                iconShape: "square",
-                iconColor: "blue",
-                highlight: false,
-                id: uuidv1(),
-            };
-        default:
-            return {
-                iconGlyph: "map-marker",
-                iconShape: "square",
-                iconColor: "blue",
-                highlight: false,
-                id: uuidv1(),
-            };
-    }
-};
-const featureLoaded = function (features) {
-    return {
-        type: "ROUTING_FEATURE_LOADED",
-        features: features,
-    };
-};
-const searchRouting = (pointList) => {
-    return (dispatch) => {
-        let geoJsonData = new Promise((resolve, reject) => {
-            setTimeout(() => {
-                let getRoutePath = instance.get(
-                    "https://api.longdo.com/RouteService/geojson/route",
-                    {
-                        params: {
-                            flon: pointList[0].lon,
-                            flat: pointList[0].lat,
-                            tlon: pointList[1].lon,
-                            tlat: pointList[1].lat,
-                            locale: "th",
-                            key: LONGDO_API_KEY,
-                        },
-                    }
-                );
-                resolve(getRoutePath);
-            }, 2000);
-        });
-        geoJsonData.then((value) => {
-            let routeGeoJson = value.data.features;
-            let routeLengthObj = routeGeoJson.length;
-            let lastRouteCoordinates =
-                routeGeoJson[routeLengthObj - 1].geometry.coordinates.length;
-            let lastRouteLon =
-                routeGeoJson[routeLengthObj - 1].geometry.coordinates[
-                lastRouteCoordinates - 1
-                ][0];
-            let lastRouteLat =
-                routeGeoJson[routeLengthObj - 1].geometry.coordinates[
-                lastRouteCoordinates - 1
-                ][1];
-            if (pointList.length === 2) {
-                routeGeoJson.push({
-                    type: "Feature",
-                    style: [routePointStyle("START")],
-                    geometry: {
-                        type: "Point",
-                        coordinates: [
-                            routeGeoJson[0].geometry.coordinates[0][0],
-                            routeGeoJson[0].geometry.coordinates[0][1],
-                        ],
-                    },
-                });
-                routeGeoJson.push({
-                    type: "Feature",
-                    style: [routePointStyle("END")],
-                    geometry: {
-                        type: "Point",
-                        coordinates: [lastRouteLon, lastRouteLat],
-                    },
-                });
-                dispatch(featureLoaded(routeGeoJson));
-                document.getElementById("find-route").innerHTML =
-                    "ค้นหาเส้นทาง";
-            } else {
-                routeGeoJson.push({
-                    type: "Feature",
-                    style: [routePointStyle("START")],
-                    geometry: {
-                        type: "Point",
-                        coordinates: [
-                            routeGeoJson[0].geometry.coordinates[0][0],
-                            routeGeoJson[0].geometry.coordinates[0][1],
-                        ],
-                    },
-                });
-                routeGeoJson.push({
-                    type: "Feature",
-                    style: [routePointStyle("START")],
-                    geometry: {
-                        type: "Point",
-                        coordinates: [lastRouteLon, lastRouteLat],
-                    },
-                });
-                for (let i = 2; i < pointList.length; i++) {
-                    const getMoreGeoJsonData = new Promise(
-                        (resolve, reject) => {
-                            setTimeout(() => {
-                                let getRoutePath = instance.get(
-                                    "https://api.longdo.com/RouteService/geojson/route",
-                                    {
-                                        params: {
-                                            flon: lastRouteLon,
-                                            flat: lastRouteLat,
-                                            tlon: pointList[i].lon,
-                                            tlat: pointList[i].lat,
-                                            locale: "th",
-                                            key: LONGDO_API_KEY,
-                                        },
-                                    }
-                                );
-                                resolve(getRoutePath);
-                            }, 2000);
-                        }
-                    );
-                    getMoreGeoJsonData.then((value) => {
-                        lastRouteCoordinates =
-                            value.data.features[value.data.features.length - 1]
-                                .geometry.coordinates.length;
-                        lastRouteLon =
-                            value.data.features[value.data.features.length - 1]
-                                .geometry.coordinates[
-                            lastRouteCoordinates - 1
-                            ][0];
-                        lastRouteLat =
-                            value.data.features[value.data.features.length - 1]
-                                .geometry.coordinates[
-                            lastRouteCoordinates - 1
-                            ][1];
-                        routeGeoJson.push({
-                            type: "Feature",
-                            style: [routePointStyle("START")],
-                            geometry: {
-                                type: "Point",
-                                coordinates: [lastRouteLon, lastRouteLat],
-                            },
-                        });
-                        routeGeoJson.push(...value.data.features);
-                        if (i + 1 === pointList.length) {
-                            dispatch(featureLoaded(routeGeoJson));
-                            document.getElementById("find-route").innerHTML =
-                                "ค้นหาเส้นทาง";
-                        }
-                    });
-                }
-            }
-        });
-    };
-};
-
-// ROUTEING ACTION
-const addPoint = function () {
-    return {
-        type: "ROUTING_ADD_POINT",
-    };
-};
-const removePoint = (index) => {
-    return {
-        type: "ROUTING_REMOVE_POINT",
-        index: index,
-    };
-};
-const swapPoint = function () {
-    return {
-        type: "ROUTING_SWAP_POINT",
-    };
-};
-const clearSearchRouting = function (props) {
-    return {
-        type: "ROUTING_FEATURE_CLEAR",
-        features: props.features,
-    };
-};
-const changePointInput = function (index, value) {
-    return {
-        type: "ROUTING_CHANGE_POINT_LIST",
-        index: index,
-        value: value,
-    };
-};
-
-const clickGuide = function (value) {
-    return {
-        type: "ROUTING_CLICK_GUIDE",
-        value: value,
-    };
-};
-
-const clickSearchResult = function (i, j, result) {
-    return {
-        type: "ROUTING_CLICK_SEARCH_RESULT",
-        i,
-        j,
-        result,
-    };
-};
-
-const searchLoaded = function (index, result) {
-    return {
-        type: "ROUTING_SEARCH_LOADED",
-        index: index,
-        result: result,
-    };
-};
-const searchPointForRouting = function (index, value, center) {
-    return (dispatch) => {
-        return instance
-            .get(
-                `https://search.longdo.com/mapsearch/json/search?lat=${center.x}&lon=${center.y}&keyword=${value}&locale=th&key=${LONGDO_API_KEY}`
-            )
-            .then((response) => {
-                dispatch(searchLoaded(index, response.data));
-            });
-    };
-};
 
 const selector = (state) => {
     return {
@@ -265,107 +50,6 @@ const selector = (state) => {
         features: state.routing.features,
     };
 };
-
-const defaultState = {
-    pointList: [
-        { lat: null, lon: null, keyword: "", searchResult: {} },
-        { lat: null, lon: null, keyword: "", searchResult: {} },
-    ],
-    features: [],
-};
-function routingReducer(state = defaultState, action) {
-    switch (action.type) {
-        case "ROUTING_ADD_POINT": {
-            if (state.pointList.length >= 2) {
-                state.pointList.map((index, i) => {
-                    document.getElementById(`btn-rm-${i}`).style.display = null;
-                });
-            }
-            return assign({}, state, {
-                pointList: state.pointList.concat([
-                    { lat: null, lon: null, keyword: "", searchResult: {} },
-                ]),
-            });
-        }
-        case "ROUTING_REMOVE_POINT": {
-            if (state.pointList.length === 2) {
-                return;
-            } else {
-                state.pointList.splice(action.index, 1);
-                if (state.pointList.length <= 2) {
-                    state.pointList.map((index, i) => {
-                        document.getElementById(`btn-rm-${i}`).style.display =
-                            "none";
-                    });
-                }
-            }
-            return assign({}, state, {});
-        }
-        case "ROUTING_SWAP_POINT": {
-            return assign({}, state, {
-                pointList: state.pointList.reverse(),
-            });
-        }
-        case "ROUTING_CHANGE_POINT_LIST": {
-            const splited = action.value.trim().split(",");
-            const lat = splited[0];
-            const lon = splited.length > 1 ? splited[1] : null;
-            return assign({}, state, {
-                pointList: state.pointList.map((point, i) => {
-                    return action.index === i
-                        ? assign({}, point, {
-                            lat: lat,
-                            lon: lon,
-                            keyword: action.value,
-                        })
-                        : point;
-                }),
-            });
-        }
-        case "ROUTING_FEATURE_LOADED": {
-            return assign({}, state, {
-                features: action.features,
-            });
-        }
-        case "ROUTING_SEARCH_LOADED": {
-            return assign({}, state, {
-                pointList: state.pointList.map((point, i) => {
-                    return action.index === i
-                        ? assign({}, point, {
-                            searchResult: action.result,
-                        })
-                        : point;
-                }),
-            });
-        }
-        case "ROUTING_CLICK_SEARCH_RESULT": {
-            return assign({}, state, {
-                pointList: state.pointList.map((point, index) => {
-                    return action.i === index
-                        ? assign({}, point, {
-                            lat: Number(action.result.lat),
-                            lon: Number(action.result.lon),
-                            keyword: action.result.name,
-                            searchResult: [],
-                        })
-                        : point;
-                }),
-            });
-        }
-        case "ROUTING_FEATURE_CLEAR": {
-            return assign({}, state, {
-                features: [],
-                pointList: [
-                    { lat: null, lon: null, keyword: "", searchResult: {} },
-                    { lat: null, lon: null, keyword: "", searchResult: {} },
-                ],
-            });
-        }
-        default: {
-            return state;
-        }
-    }
-}
 
 class RoutingDialog extends React.Component {
     static propTypes = {
@@ -461,19 +145,28 @@ class RoutingDialog extends React.Component {
             ret += "" + hrs + " ชั่วโมง " + (mins < 10 ? "0" : "");
         }
         ret += "" + mins + " นาที ";
-        return <div className="panel-heading">{ret}</div>;
+        return ret;
     };
 
-    renderGuideList = (guideList, time) => {
+    renderGuideList = (guideList, time,totalDistance) => {
         return (
             <div>
                 <div
                     className="panel panel-primary"
                     style={{ marginTop: "10px" }}
                 >
-                    {this.renderEastimateTime(time)}
+                    <div className="panel-heading">
+                       <Row>
+                        <Col md={6}>
+                            {this.renderEastimateTime(time)}
+                        </Col>
+                        <Col md={6} style={{textAlign:'right'}}>
+                             ระยะทาง: {totalDistance > 1000 ? (totalDistance /  1000).toFixed(2)+' กม.' : totalDistance+' เมตร'}
+                        </Col>
+                       </Row>
+                    </div>
                     <div className="panel-body">
-                        <div style={this.routingGuideList} key="routing-guide">
+                        <div style={routingStyle.routingGuideList} key="routing-guide">
                             {guideList}
                         </div>
                     </div>
@@ -488,79 +181,6 @@ class RoutingDialog extends React.Component {
             </div>
         );
     };
-
-    start = {
-        x: (window.innerWidth - 600) * 0.5,
-        y: (window.innerHeight - 500) * 0.5,
-    };
-
-    dialogStyle = {
-        position: "fixed",
-        top: "0px",
-        left: "0px",
-    };
-
-    routingGuideList = {
-        marginTop: "10px",
-        paddingRight: "10px",
-        overflow: "auto",
-    };
-
-    guideStyle = {
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "flex-start",
-        alignItems: "center",
-        cursor: "pointer",
-    };
-
-    turnStyle = {
-        width: "36px",
-        height: "36px",
-        display: "flex",
-        flexDirection: "row",
-        justifyContent: "center",
-        alignItems: "stretch",
-        padding: "12px 0px",
-    };
-
-    turnImageStyle = {
-        width: "16px",
-        height: "16px",
-    };
-
-    distanceStyle = {
-        marginLeft: "auto",
-    };
-
-    resultListStyle = {
-        borderLeft: "1px solid #dddddd",
-        borderRight: "1px solid #dddddd",
-        position: "absolute",
-        background: "white",
-        maxHeight: "600px",
-        overflowY: "auto",
-        width: "90.5%",
-        zIndex: 10,
-        marginTop: "11.5%",
-    };
-    resultListStyleWithRemove = {
-        borderLeft: "1px solid #dddddd",
-        borderRight: "1px solid #dddddd",
-        position: "absolute",
-        background: "white",
-        maxHeight: "600px",
-        overflowY: "auto",
-        width: "80.5%",
-        marginTop: "12.1%",
-        zIndex: "10",
-    };
-
-    resultStyle = {
-        padding: "6px 12px",
-        cursor: "pointer",
-    };
-
     renderHeader() {
         return (
             <div style={{ width: "100%" }}>
@@ -592,6 +212,7 @@ class RoutingDialog extends React.Component {
         );
     }
 
+
     render() {
         const pointList = [];
         for (const [index, value] of this.props.pointList.entries()) {
@@ -603,7 +224,7 @@ class RoutingDialog extends React.Component {
             for (const [i, result] of results.entries()) {
                 resultList.push(
                     <div
-                        style={this.resultStyle}
+                        style={routingStyle.resultStyle}
                         key={`result-${i}-input-${index}`}
                         onClick={this.onClickSearchResult(index, i, result)}
                     >
@@ -636,8 +257,8 @@ class RoutingDialog extends React.Component {
                         <div
                             style={
                                 index >= 2
-                                    ? this.resultListStyleWithRemove
-                                    : this.resultListStyle
+                                    ? routingStyle.resultListStyleWithRemove
+                                    : routingStyle.resultListStyle
                             }
                         >
                             {resultList}
@@ -672,27 +293,28 @@ class RoutingDialog extends React.Component {
 
         const guideList = [];
         var eastimateTime = 0.0;
+        var totalDistance = 0;
         for (const [index, value] of this.props.features.entries()) {
             if (value.geometry.type !== "LineString") {
                 continue;
             }
             eastimateTime += value.properties.interval;
+            totalDistance += value.properties.distance;
             const src = `https://api.longdo.com/RouteService/images/turn${value.properties.turn}.png`;
-            const d =
-                value.properties.distance < 1000
-                    ? `${value.properties.distance} m`
-                    : `${(value.properties.distance / 1000.0).toFixed(1)} km`;
+            const d = value.properties.distance < 1000 ? `${value.properties.distance} m` : `${(value.properties.distance / 1000.0).toFixed(1)} km`;
+        
+   
             guideList.push(
                 <div
                     className="routing-guide"
-                    style={this.guideStyle}
+                    style={routingStyle.guideStyle}
                     onClick={this.onClickGuide(value)}
                 >
-                    <div className="turn" style={this.turnStyle}>
-                        <img style={this.turnImageStyle} src={src} />
+                    <div className="turn" style={routingStyle.turnStyle}>
+                        <img style={routingStyle.turnImageStyle} src={src} />
                     </div>
                     <div className="detail">{value.properties.name}</div>
-                    <div className="distance" style={this.distanceStyle}>
+                    <div className="distance" style={routingStyle.distanceStyle}>
                         {d}
                     </div>
                 </div>
@@ -770,7 +392,8 @@ class RoutingDialog extends React.Component {
                                     {guideList.length !== 0 ? (
                                         this.renderGuideList(
                                             guideList,
-                                            eastimateTime
+                                            eastimateTime,
+                                            totalDistance
                                         )
                                     ) : (
                                         <div></div>
@@ -816,152 +439,6 @@ const routing = connect(
         pure: false,
     }
 )(RoutingDialog);
-
-const routingResultLoadedEpic = (action$, { getState = () => { } }) =>
-    action$
-        .ofType("ROUTING_FEATURE_LOADED")
-        .filter(() => {
-            return (getState().controls.routing || {}).enabled || false;
-        })
-        .switchMap(({ features }) => {
-            const drawOptions = {
-                featureProjection: "EPSG:4326",
-                stopAfterDrawing: true,
-                editEnabled: false,
-                selectEnabled: true,
-                translateEnabled: false,
-                drawEnabled: false,
-                // useSelectedStyle: true
-            };
-
-            const style = {
-                highlight: false,
-            };
-            let locationList = [];
-            features.forEach((f) => {
-                locationList = locationList.concat(
-                    f.geometry.coordinates.map((c) => {
-                        return {
-                            lat: c[1],
-                            lon: c[0],
-                        };
-                    })
-                );
-            });
-            let featuresFormat = features.map((feature) => {
-                feature.properties = {
-                    ...feature.properties,
-                    id: uuidv1(),
-                    isValidFeature: true,
-                    canEdit: false,
-                };
-                if (feature.geometry.type === "LineString") {
-                    feature.style = [
-                        {
-                            color: "#006994",
-                            opacity: 1,
-                            weight: 4,
-                            editing: {
-                                fill: 1,
-                            },
-                            highlight: false,
-                            id: uuidv1(),
-                        },
-                    ];
-                }
-                return feature;
-            });
-            const bbox = window.longdo.Util.locationBound(locationList);
-            const featureCollection = [
-                {
-                    type: "FeatureCollection",
-                    newFeature: true,
-                    id: uuidv1(),
-                    geometry: null,
-                    properties: uuidv1(),
-                    features: [...featuresFormat],
-                },
-            ];
-            return Rx.Observable.from([
-                changeDrawingStatus("clean", "", "routingResult", [], {}),
-                changeDrawingStatus(
-                    "drawOrEdit",
-                    "LineString",
-                    "routingResult",
-                    featureCollection,
-                    drawOptions,
-                    style
-                ),
-                zoomToExtent(
-                    [bbox.minLon, bbox.minLat, bbox.maxLon, bbox.maxLat],
-                    "EPSG:4326",
-                    10,
-                    { nearest: true }
-                ),
-            ]);
-        });
-const clearRoutingResult = (action$, { getState = () => { } }) =>
-    action$
-        .ofType("ROUTING_FEATURE_CLEAR")
-        .filter(() => {
-            return (getState().controls.routing || {}).enabled || false;
-        })
-        .switchMap(() => {
-            return Rx.Observable.from([
-                changeDrawingStatus("clean", "", "routingResult", [], {}),
-            ]);
-        });
-const routingClickGuideEpic = (action$, { getState = () => { } }) =>
-    action$
-        .ofType("ROUTING_CLICK_GUIDE")
-        .filter(() => {
-            return (getState().controls.routing || {}).enabled || false;
-        })
-        .switchMap(({ value }) => {
-            console.log(value);
-
-            let locationList = value.geometry.coordinates.map((c) => {
-                return {
-                    lat: c[1],
-                    lon: c[0],
-                };
-            });
-            const bbox = window.longdo.Util.locationBound(locationList);
-
-            return Rx.Observable.from([
-                // zoomToPoint(
-                zoomToExtent(
-                    [bbox.minLon, bbox.minLat, bbox.maxLon, bbox.maxLat],
-                    "EPSG:4326",
-                    16,
-                    { nearest: true }
-                ),
-            ]);
-        });
-const onSwapRoutingEpic = (action$, { getState = () => { } }) =>
-    action$
-        .ofType("ROUTING_SWAP_POINT")
-        .filter(() => {
-            return (getState().controls.routing || {}).enabled || false;
-        })
-        .switchMap(({ }) => {
-            const pointList = getState().pointList;
-            console.log(getState());
-        });
-
-const routingChangePointInputEpic = (action$, { getState = () => { } }) =>
-    action$
-        .ofType("ROUTING_CHANGE_POINT_LIST")
-        .debounceTime(300)
-        .filter(() => {
-            return (getState().controls.routing || {}).enabled || false;
-        })
-        .switchMap(({ index, value }) => {
-            const center = getState().map.present.center;
-            return Rx.Observable.from([
-                searchPointForRouting(index, value, center),
-            ]);
-        });
 
 export default {
     RoutingPlugin: assign(routing, {
