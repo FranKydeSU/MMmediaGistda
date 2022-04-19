@@ -49,8 +49,28 @@ export const clickSearchResult = function (i, j, result) {
     };
 };
 
+export const changeRouteMode = function (value) {
+    return {
+        type: "ROUTING_CHANGE_MODE",
+        value: value
+    };
+}
+
+export const changeRouteType = function (value) {
+    return {
+        type: 'ROUTING_CHANGE_TYPE',
+        value: value
+    }
+}
+
+export const displaySetting = function () {
+    return {
+        type: "ROUTING_DISPLAY_SETTING",
+    };
+}
+
 // Search
-export const searchRouting = (pointList) => {
+export const searchRouting = (pointList,routeMode,routeType) => {
     return (dispatch) => {
         let geoJsonData = new Promise((resolve, reject) => {
             setTimeout(() => {
@@ -63,6 +83,8 @@ export const searchRouting = (pointList) => {
                             tlon: pointList[1].lon,
                             tlat: pointList[1].lat,
                             locale: "th",
+                            mode: routeMode,
+                            type: routeType.toString() || '',
                             key: LONGDO_API_KEY,
                         },
                     }
@@ -139,6 +161,8 @@ export const searchRouting = (pointList) => {
                                             tlon: pointList[i].lon,
                                             tlat: pointList[i].lat,
                                             locale: "th",
+                                            mode: routeMode,
+                                            type: routeType.toString() || '',
                                             key: LONGDO_API_KEY,
                                         },
                                     }

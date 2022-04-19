@@ -1,4 +1,3 @@
-
 import assign from "object-assign";
 import React from "react";
 import { connect } from "react-redux";
@@ -11,33 +10,35 @@ import Button from "../../components/misc/Button";
 import Loader from "../../components/misc/Loader";
 import BorderLayout from "../../components/layout/BorderLayout";
 import { setControlProperty, toggleControl } from "../../actions/controls";
-import { Glyphicon,Row, Col } from "react-bootstrap";
+import { Glyphicon, Row, Col } from "react-bootstrap";
 import { createControlEnabledSelector } from "../../selectors/controls";
 
 // Action
 import {
     addPoint,
+    displaySetting,
     changePointInput,
     clearSearchRouting,
     removePoint,
     swapPoint,
     searchRouting,
     clickGuide,
-    clickSearchResult
-} from './routing/actions/routing'
+    clickSearchResult,
+    changeRouteMode,
+    changeRouteType
+} from "./routing/actions/routing";
 // Style
-import routingStyle from './routing/routingStyle';
+import routingStyle from "./routing/routingStyle";
 
-import { routingReducer } from './routing/reducers/routingReducer'
+import { routingReducer } from "./routing/reducers/routingReducer";
 
 import {
     clearRoutingResult,
     onSwapRoutingEpic,
     routingChangePointInputEpic,
     routingClickGuideEpic,
-    routingResultLoadedEpic
-} from './routing/epic/routingEpic'
-
+    routingResultLoadedEpic,
+} from "./routing/epic/routingEpic";
 
 createControlEnabledSelector("routing");
 const routingSelector = (state) => get(state, "controls.routing.enabled");
@@ -47,17 +48,23 @@ const toggleRoutingTool = toggleControl.bind(null, "routing", null);
 const selector = (state) => {
     return {
         pointList: state.routing.pointList,
+        displaySetting: state.routing.displaySetting,
         features: state.routing.features,
+        routeMode: state.routing.routeMode,
+        routeType: state.routing.routeType
     };
 };
 
 class RoutingDialog extends React.Component {
     static propTypes = {
         show: PropTypes.bool,
+        displaySetting: PropTypes.bool,
         dockProps: PropTypes.object,
         loading: PropTypes.bool,
         pointList: PropTypes.array,
         features: PropTypes.array,
+        routeMode: PropTypes.string,
+        routeType: PropTypes.array,
         onClose: PropTypes.func,
         onSwapPoint: PropTypes.func,
         onAddPoint: PropTypes.func,
@@ -66,10 +73,12 @@ class RoutingDialog extends React.Component {
         onChangePointInput: PropTypes.func,
         onClickGuide: PropTypes.func,
         onClickSearchResult: PropTypes.func,
+        onChangeRouteMode: PropTypes.func
     };
 
     static defaultProps = {
         show: false,
+        displaySetting: false,
         dockProps: {
             dimMode: "none",
             size: 0.3,
@@ -78,11 +87,13 @@ class RoutingDialog extends React.Component {
             zIndex: 1030,
         },
         loading: false,
+        routeMode: null,
+        routeType: [],
         pointList: [
             { lat: null, lon: null },
             { lat: null, lon: null },
         ],
-        features: [],
+        features: []
     };
 
     onClose = () => {
@@ -103,14 +114,24 @@ class RoutingDialog extends React.Component {
         };
     };
 
+    onDisplaySetting = () => {
+        this.props.onDisplaySetting();
+    }
+
     onSearch = () => {
-        const pointEmptyValidate = this.props.pointList.find((point) => { if (!point.lat || !point.lon) { return point } })
+        const pointEmptyValidate = this.props.pointList.find((point) => {
+            if (!point.lat || !point.lon) {
+                return point;
+            }
+        });
+        const routeMode = this.props.routeMode;
+        const routeType = this.props.routeType;
         if (pointEmptyValidate && !pointEmptyValidate.lat) {
             document.getElementById("find-route").innerHTML = "ค้นหาเส้นทาง";
-            return
+            return;
         } else {
             document.getElementById("find-route").innerHTML = "กำลังค้นหา...";
-            this.props.onSearch(this.props.pointList);
+            this.props.onSearch(this.props.pointList, routeMode,routeType);
         }
     };
 
@@ -136,6 +157,14 @@ class RoutingDialog extends React.Component {
         };
     };
 
+    onChangeRouteMode = (e) => {
+        return this.props.onChangeRouteMode(e.target.value);
+    }
+
+    onChangeRouteType = (e) => {
+        return this.props.onChangeRouteType(e.target.value);
+    }
+
     renderEastimateTime = (time) => {
         var hrs = ~~(time / 3600);
         var mins = ~~((time % 3600) / 60);
@@ -148,7 +177,7 @@ class RoutingDialog extends React.Component {
         return ret;
     };
 
-    renderGuideList = (guideList, time,totalDistance) => {
+    renderGuideList = (guideList, time, totalDistance) => {
         return (
             <div>
                 <div
@@ -156,17 +185,21 @@ class RoutingDialog extends React.Component {
                     style={{ marginTop: "10px" }}
                 >
                     <div className="panel-heading">
-                       <Row>
-                        <Col md={6}>
-                            {this.renderEastimateTime(time)}
-                        </Col>
-                        <Col md={6} style={{textAlign:'right'}}>
-                             ระยะทาง: {totalDistance > 1000 ? (totalDistance /  1000).toFixed(2)+' กม.' : totalDistance+' เมตร'}
-                        </Col>
-                       </Row>
+                        <Row>
+                            <Col md={6}>{this.renderEastimateTime(time)}</Col>
+                            <Col md={6} style={{ textAlign: "right" }}>
+                                ระยะทาง:{" "}
+                                {totalDistance > 1000
+                                    ? (totalDistance / 1000).toFixed(2) + " กม."
+                                    : totalDistance + " เมตร"}
+                            </Col>
+                        </Row>
                     </div>
                     <div className="panel-body">
-                        <div style={routingStyle.routingGuideList} key="routing-guide">
+                        <div
+                            style={routingStyle.routingGuideList}
+                            key="routing-guide"
+                        >
                             {guideList}
                         </div>
                     </div>
@@ -211,7 +244,6 @@ class RoutingDialog extends React.Component {
             </div>
         );
     }
-
 
     render() {
         const pointList = [];
@@ -301,9 +333,11 @@ class RoutingDialog extends React.Component {
             eastimateTime += value.properties.interval;
             totalDistance += value.properties.distance;
             const src = `https://api.longdo.com/RouteService/images/turn${value.properties.turn}.png`;
-            const d = value.properties.distance < 1000 ? `${value.properties.distance} m` : `${(value.properties.distance / 1000.0).toFixed(1)} km`;
-        
-   
+            const d =
+                value.properties.distance < 1000
+                    ? `${value.properties.distance} m`
+                    : `${(value.properties.distance / 1000.0).toFixed(1)} km`;
+
             guideList.push(
                 <div
                     className="routing-guide"
@@ -314,7 +348,10 @@ class RoutingDialog extends React.Component {
                         <img style={routingStyle.turnImageStyle} src={src} />
                     </div>
                     <div className="detail">{value.properties.name}</div>
-                    <div className="distance" style={routingStyle.distanceStyle}>
+                    <div
+                        className="distance"
+                        style={routingStyle.distanceStyle}
+                    >
                         {d}
                     </div>
                 </div>
@@ -322,7 +359,7 @@ class RoutingDialog extends React.Component {
         }
 
         return this.props.show ? (
-            <ContainerDimensions>
+            <ContainerDimensions id="routingContainer">
                 {({ width }) => (
                     <span className="react-dock-no-resize">
                         <Dock
@@ -333,9 +370,51 @@ class RoutingDialog extends React.Component {
                             size={330 / width > 1 ? 1 : 330 / width}
                         >
                             <BorderLayout header={this.renderHeader()}>
-                                <div key="routing-body" role="body" style={{ padding: '10px' }}>
+                                <div
+                                    key="routing-body"
+                                    role="body"
+                                    style={{ padding: "10px" }}
+                                >
                                     {pointList}
                                     <br />
+                                    {
+                                        this.props.displaySetting ? (<div className="route-option" style={{ textAlign: 'center', marginLeft: '15%', marginBottom: '5%' }}>
+                                            <Row>
+                                                <Col md={6} style={{ textAlign: 'left' }}>
+                                                    <div onChange={this.onChangeRouteMode}>
+                                                        <div className="radio">
+                                                            <label><input type="radio" name="routeMode" value="c" checked={this.props.routeMode === null || this.props.routeMode === 'c'} />ถนนหลัก</label>
+                                                        </div>
+                                                        <div className="radio">
+                                                            <label><input type="radio" name="routeMode" value="d" />ทางลัด</label>
+                                                        </div>
+                                                        <div className="radio">
+                                                            <label><input type="radio" name="routeMode" value="t" />หลบรถติด</label>
+                                                        </div>
+                                                        <div className="radio">
+                                                            <label><input type="radio" name="routeMode" value="Walk" />เดิน/ขนส่งมวลชน</label>
+                                                        </div>
+                                                    </div>
+                                                </Col>
+                                                <Col md={6} style={{ textAlign: 'left' }}>
+                                                    <div onChange={this.onChangeRouteType}>
+                                                        <div className="checkbox">
+                                                            <label><input type="checkbox" value="1" name="routeType" />รถ</label>
+                                                        </div>
+                                                        <div className="checkbox">
+                                                            <label><input type="checkbox" value="fly" name="routeType" />อากาศ</label>
+                                                        </div>
+                                                        <div className="checkbox">
+                                                            <label><input type="checkbox" value="train" name="routeType" />รถไฟ</label>
+                                                        </div>
+                                                        <div className="checkbox">
+                                                            <label><input type="checkbox" value="8" name="routeType" />เรือ</label>
+                                                        </div>
+                                                    </div>
+                                                </Col>
+                                            </Row>
+                                        </div>) : (<div></div>)
+                                    }
                                     <div
                                         style={{
                                             display: "flex",
@@ -362,6 +441,7 @@ class RoutingDialog extends React.Component {
                                                 key="setting"
                                                 className="btn btn-londo-circle-sm"
                                                 style={{ marginLeft: "5px" }}
+                                                onClick={this.onDisplaySetting}
                                             >
                                                 <Glyphicon glyph="cog" />
                                             </button>
@@ -425,6 +505,7 @@ const routing = connect(
     ),
     {
         onClose: toggleRoutingTool,
+        onDisplaySetting: displaySetting,
         onAddPoint: addPoint,
         onSwapPoint: swapPoint,
         onRemovePoint: removePoint,
@@ -433,6 +514,8 @@ const routing = connect(
         onChangePointInput: changePointInput,
         onClickGuide: clickGuide,
         onClickSearchResult: clickSearchResult,
+        onChangeRouteMode: changeRouteMode,
+        onChangeRouteType: changeRouteType
     },
     null,
     {

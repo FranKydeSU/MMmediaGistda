@@ -39,7 +39,7 @@ const LayerSelector = ({ responses, index,setIndex}) => {
         setIndex(idx);
     };
     return (
-        <div id="identify-layer-select" style={{flex: "1 1 0%", padding: "0px 4px"}}>
+        <div id="identify-layer-select" style={{flex: "1 1 0%"}}>
             <SelectLocalized
                 {...selectProps}
                 onChange={onChange}
