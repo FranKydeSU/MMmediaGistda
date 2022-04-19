@@ -1,11 +1,14 @@
 import assign from "object-assign";
 
 const defaultState = {
+    displaySetting: false,
     pointList: [
         { lat: null, lon: null, keyword: "", searchResult: {} },
         { lat: null, lon: null, keyword: "", searchResult: {} },
     ],
     features: [],
+    routeType: [],
+    routeMode: null
 };
 export function routingReducer(state = defaultState, action) {
     switch (action.type) {
@@ -55,6 +58,28 @@ export function routingReducer(state = defaultState, action) {
                         : point;
                 }),
             });
+        }
+        case "ROUTING_DISPLAY_SETTING": {
+            return assign({}, state, {
+                displaySetting: !state.displaySetting
+            })
+        }
+        case "ROUTING_CHANGE_MODE": {
+            return assign({}, state, {
+                routeMode: action.value
+            })
+        }
+        case "ROUTING_CHANGE_TYPE": {
+            const indexOfRouteType = state.routeType.indexOf(action.value);
+            if (indexOfRouteType == -1) {
+                return assign({}, state, {
+                    routeType: state.routeType.concat(action.value)
+                });
+            }else {
+                return assign({}, state,{
+                    routeType:  indexOfRouteType == 0 ? [] : state.routeType.splice(action.value,1)
+                })
+            }
         }
         case "ROUTING_FEATURE_LOADED": {
             return assign({}, state, {
