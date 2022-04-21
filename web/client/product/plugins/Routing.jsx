@@ -378,37 +378,45 @@ class RoutingDialog extends React.Component {
                                     {pointList}
                                     <br />
                                     {
-                                        this.props.displaySetting ? (<div className="route-option" style={{ textAlign: 'center', marginLeft: '15%', marginBottom: '5%' }}>
+                                        this.props.displaySetting ? (<div className="route-option" style={{ textAlign: 'center',paddingLeft:'10%',marginBottom: '5%' }}>
                                             <Row>
                                                 <Col md={6} style={{ textAlign: 'left' }}>
+                                                    <label>โหมดการเดินทาง</label>
                                                     <div onChange={this.onChangeRouteMode}>
                                                         <div className="radio">
-                                                            <label><input type="radio" name="routeMode" value="c" checked={this.props.routeMode === null || this.props.routeMode === 'c'} />ถนนหลัก</label>
+                                                            <label><input type="radio" name="routeMode" value="t" />ระยะเวลาน้อยสุด</label>
                                                         </div>
                                                         <div className="radio">
-                                                            <label><input type="radio" name="routeMode" value="d" />ทางลัด</label>
+                                                            <label><input type="radio" name="routeMode" value="d" />ระยะทางน้อยสุด</label>
                                                         </div>
                                                         <div className="radio">
-                                                            <label><input type="radio" name="routeMode" value="t" />หลบรถติด</label>
-                                                        </div>
-                                                        <div className="radio">
-                                                            <label><input type="radio" name="routeMode" value="Walk" />เดิน/ขนส่งมวลชน</label>
+                                                            <label><input type="radio" name="routeMode" value="c" />ประหยัดค่าใช้จ่าย</label>
                                                         </div>
                                                     </div>
                                                 </Col>
                                                 <Col md={6} style={{ textAlign: 'left' }}>
+                                                    <label>วิธีการเดินทาง</label>
                                                     <div onChange={this.onChangeRouteType}>
                                                         <div className="checkbox">
-                                                            <label><input type="checkbox" value="1" name="routeType" />รถ</label>
+                                                            <label><input type="checkbox" name="routeType" value="1" />ถนนหลัก</label>
                                                         </div>
                                                         <div className="checkbox">
-                                                            <label><input type="checkbox" value="fly" name="routeType" />อากาศ</label>
+                                                            <label><input type="checkbox" value="16" name="routeType" />ทางด่วน</label>
                                                         </div>
                                                         <div className="checkbox">
-                                                            <label><input type="checkbox" value="train" name="routeType" />รถไฟ</label>
+                                                            <label><input type="checkbox" value="32" name="routeType" />รถประจำทาง</label>
+                                                        </div>
+                                                        <div className="checkbox">
+                                                            <label><input type="checkbox" value="64" name="routeType" />รถไฟฟ้า</label>
+                                                        </div>
+                                                        <div className="checkbox">
+                                                            <label><input type="checkbox" value="4" name="routeType" />รถไฟ</label>
                                                         </div>
                                                         <div className="checkbox">
                                                             <label><input type="checkbox" value="8" name="routeType" />เรือ</label>
+                                                        </div>
+                                                        <div className="checkbox">
+                                                            <label><input type="checkbox" value="2" name="routeType" />อากาศ</label>
                                                         </div>
                                                     </div>
                                                 </Col>

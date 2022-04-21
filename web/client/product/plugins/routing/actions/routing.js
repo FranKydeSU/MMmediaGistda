@@ -72,6 +72,7 @@ export const displaySetting = function () {
 // Search
 export const searchRouting = (pointList,routeMode,routeType) => {
     return (dispatch) => {
+        const routeTypeTotal = routeType.length == 0 ? null : routeType.reduce((type, a) => Number.parseInt(type) + Number.parseInt(a), 0);
         let geoJsonData = new Promise((resolve, reject) => {
             setTimeout(() => {
                 let getRoutePath = instance.get(
@@ -84,7 +85,7 @@ export const searchRouting = (pointList,routeMode,routeType) => {
                             tlat: pointList[1].lat,
                             locale: "th",
                             mode: routeMode,
-                            type: routeType.toString() || '',
+                            type: routeTypeTotal,
                             key: LONGDO_API_KEY,
                         },
                     }
@@ -162,7 +163,7 @@ export const searchRouting = (pointList,routeMode,routeType) => {
                                             tlat: pointList[i].lat,
                                             locale: "th",
                                             mode: routeMode,
-                                            type: routeType.toString() || '',
+                                            type: routeTypeTotal,
                                             key: LONGDO_API_KEY,
                                         },
                                     }
