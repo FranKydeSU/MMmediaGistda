@@ -516,7 +516,8 @@
             "StyleEditor",
             "Nearby",
             "FetchLayers",
-            "Routing"
+            "Routing",
+            "Buffer"
         ],
         "embedded": ["Details", {
                 "name": "Map",

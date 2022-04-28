@@ -298,6 +298,15 @@
       ]
     },
     {
+      "name": "buffer",
+      "glyph": "search",
+      "title": "plugins.buffer.title",
+      "description": "plugins.buffer.description",
+      "dependencies": [
+        "BurgerMenu"
+      ]
+    },
+    {
       "name": "Print",
       "glyph": "print",
       "title": "plugins.Print.title",

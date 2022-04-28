@@ -27,6 +27,7 @@ export default {
         NearbyPlugin: require('./plugins/Nearby').default,
         RoutingPlugin: require('./plugins/Routing').default,
         FetchLayerPlugin: require('./plugins/FetchLayers').default,
+        BufferPlugin: require('./plugins/Buffer').default, // FRANKY
         // framework plugins
         AddGroupPlugin: require('../plugins/AddGroup').default,
         AnnotationsPlugin: require('../plugins/Annotations').default,
