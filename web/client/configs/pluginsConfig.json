@@ -282,6 +282,15 @@
       ]
     },
     {
+      "name": "PrintScreen",
+      "glyph": "search",
+      "title": "plugins.prtsc.title",
+      "description": "plugins.prtsc.description",
+      "dependencies": [
+        "BurgerMenu"
+      ]
+    },
+    {
       "name": "FetchLayers",
       "glyph": "",
       "title": "plugins.FetchLayers.title",
