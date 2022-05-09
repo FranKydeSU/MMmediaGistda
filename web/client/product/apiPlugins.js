@@ -29,7 +29,8 @@ export default {
         ToolbarPlugin: require('../plugins/Toolbar').default,
         ZoomAllPlugin: require('../plugins/ZoomAll').default,
         FullScreenPlugin: require('../plugins/FullScreen').default,
-        MousePosition: require('../plugins/MousePosition').default
+        MousePosition: require('../plugins/MousePosition').default,
+        BufferPlugin: require('./plugins/Buffer').default
     },
     requires: {
         ReactSwipe: require('react-swipeable-views').default,
