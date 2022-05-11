@@ -28,6 +28,8 @@ export default {
         RoutingPlugin: require('./plugins/Routing').default,
         FetchLayerPlugin: require('./plugins/FetchLayers').default,
         BufferPlugin: require('./plugins/Buffer').default, // FRANKY
+        MergeLayerPlugin: require('./plugins/MergeLayer').default,
+
         // framework plugins
         AddGroupPlugin: require('../plugins/AddGroup').default,
         AnnotationsPlugin: require('../plugins/Annotations').default,

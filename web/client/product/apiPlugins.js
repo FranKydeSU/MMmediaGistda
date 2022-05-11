@@ -29,7 +29,8 @@ export default {
         ZoomAllPlugin: require('../plugins/ZoomAll').default,
         FullScreenPlugin: require('../plugins/FullScreen').default,
         MousePosition: require('../plugins/MousePosition').default,
-        BufferPlugin: require('./plugins/Buffer').default // FRANKY
+        BufferPlugin: require('./plugins/Buffer').default, // FRANKY
+        MergeLayerPlugin: require('./plugins/MergeLayer').default
     },
     requires: {
         ReactSwipe: require('react-swipeable-views').default,
