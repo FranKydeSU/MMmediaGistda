@@ -3,9 +3,10 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import assign from 'object-assign';
 import { get } from 'lodash';
-import {find} from 'lodash';
+import { find } from 'lodash';
 import axios from '../../libs/ajax';
 import Rx from 'rxjs'
+import uuidv1 from 'uuid/v1';
 
 import { createControlEnabledSelector } from '../../selectors/controls';
 import { setControlProperty, toggleControl } from "../../actions/controls";
@@ -15,22 +16,7 @@ import { DropdownList } from 'react-widgets';
 import Dialog from '../../components/misc/Dialog';
 import LayerSelector from './mergelayer/LayerSelector'
 import { groupsSelector, layersSelector } from '../../selectors/layers'
-import { addLayer, changeLayerProperties } from '../../actions/layers'
-import {getLayerId, getLayerUrl} from '../../utils/LayersUtils';
-import { zoomToExtent } from '../../actions/map';
-import * as ConfigUtils from '../../utils/ConfigUtils';
-import {authkeyParamNameSelector} from '../../selectors/catalog';
-
-import csw from '../../api/CSW';
-import wms from '../../api/WMS';
-import wmts from '../../api/WMTS';
-import backgrounds from '../../api/mapBackground';
-var API = {
-    csw,
-    wms,
-    wmts,
-    backgrounds
-};
+import { addLayer } from '../../actions/layers'
 
 createControlEnabledSelector("mergelyr");
 
@@ -47,14 +33,14 @@ const layerNodesExtracter = (groups) => {
 }
 
 const loadFeature = function (layerSelected1, layerSelected2) {
-    console.log('layerSelected1: ',layerSelected1)
+    console.log('layerSelected1: ', layerSelected1)
     console.log('layerSelected2: ', layerSelected2)
     if (!layerSelected1 || !layerSelected2) {
         layerSelected1 = {}
-        layerSelected2= {}
+        layerSelected2 = {}
     }
     const DEFAULT_API = 'https://geonode.longdo.com/geoserver/wfs';
-    return (dispatch,getState) => {
+    return (dispatch, getState) => {
         dispatch(loading(true))
         axios.get(`${layerSelected1.url || DEFAULT_API}`, {
             params: {
@@ -67,7 +53,7 @@ const loadFeature = function (layerSelected1, layerSelected2) {
         }).then(({ data }) => {
             console.log('--Can get LayerFeatures--')
             let featureLayer1 = data
-            console.log('featureLayer1', featureLayer1)
+            console.log('featureLayer1: ', featureLayer1)
             dispatch(featureLoaded1(featureLayer1))
             //         try {
             //             const layerType = layerInfo.properties.find((layerType) => { return layerType.localType === 'Point' })
@@ -120,7 +106,7 @@ const loadFeature = function (layerSelected1, layerSelected2) {
             }
         }).then(({ data }) => {
             let featureLayer2 = data
-            console.log('featureLayer2', featureLayer2)
+            console.log('featureLayer2: ', featureLayer2)
             dispatch(featureLoaded2(featureLayer2))
             dispatch(loading(false))
             //         try {
@@ -166,18 +152,6 @@ const loadFeature = function (layerSelected1, layerSelected2) {
         });
     };
 };
-
-const addNewLayer = function (layer) {
-    return (dispatch, getState) => {
-        const state = getState();
-        const layers = layersSelector(state);
-        console.log('state.mergelyr',state.mergelyr)
-
-        console.log('layers',layers)
-        console.log('layer',layer)
-        dispatch(addLayer({...layer, id: layer.id}));
-    }
-}
 
 const selector = (state) => {
     return {
@@ -226,11 +200,18 @@ const featureLoaded2 = function (featuresSelected2) {
 }
 
 const loading = function (isLoading) {
-    console.log('isLoading',isLoading)
+    // console.log('isLoading', isLoading)
     return {
         type: 'MERGELYR:SET_LOADING',
         isLoading
     }
+}
+
+const MergeAsLayer = function (features) {
+    return {
+        type: 'MERGELYR:ADD_AS_LAYER',
+        features
+    };
 }
 
 function mergelyrReducer(state = defaultState, action) {
@@ -256,7 +237,7 @@ function mergelyrReducer(state = defaultState, action) {
             })
         }
         case 'MERGELYR:SET_LOADING': {
-            return assign({},state,{
+            return assign({}, state, {
                 loading: action.isLoading
             })
         }
@@ -285,6 +266,24 @@ const doMergeEpic = (action$, { getState = () => { } }) =>
             return Rx.Observable.from([
                 loadFeature(layerSelected1, layerSelected2)
             ]);
+        });
+
+const mergeAsLayerEpic = (action$) =>
+    action$.ofType('MERGELYR:ADD_AS_LAYER')
+        .switchMap(({ features }) => {
+            console.log('==> mergeAsLayerEpic')
+            console.log('featuresWantToAddLayer:',features)
+            // const layerFeature = convertMeasuresToGeoJSON(features, textLabels, uom, uuidv1());
+            return Rx.Observable.of(
+                addLayer({
+                    type: 'vector',
+                    id: uuidv1(),
+                    name: 'Measurements',
+                    hideLoading: true,
+                    features: [features],
+                    visibility: true
+                })
+            );
         });
 
 const defaultState = {
@@ -321,9 +320,9 @@ class MergeLayerComponent extends React.Component {
         featuresSelected2: {},
         loading: false,
 
-        onClose: ()=>{},
-        onDoMerge: ()=>{},
-        onMerge: ()=>{},
+        onClose: () => { },
+        onDoMerge: () => { },
+        onMerge: () => { },
     }
 
     onClose = () => {
@@ -339,26 +338,27 @@ class MergeLayerComponent extends React.Component {
     };
 
     onDoMerge = () => {
-        this.props.onDoMerge(this.props.layersNode[this.props.layerIndex1],this.props.layersNode[this.props.layerIndex2])
+        this.props.onDoMerge(this.props.layersNode[this.props.layerIndex1], this.props.layersNode[this.props.layerIndex2])
     }
 
     onMerge = () => { // อันนี้ลอง merge จริงๆ onDoMerge คือแค่ดึง features จาก services
-        console.log(this.props.featuresSelected1.features, this.props.featuresSelected2.features)
+        // console.log(this.props.featuresSelected1.features, this.props.featuresSelected2.features)
         let mergedFeatures = this.props.featuresSelected1.features.concat(this.props.featuresSelected2.features)
         // mergedFeatures.features.concat(this.props.featuresSelected2.features)
-        console.log('mergedJustFeatures:',mergedFeatures)
+        // console.log('mergedJustFeatures:', mergedFeatures)
         // this.props.onMerge(this.props.featureLayer1)
         this.onAddLayer()
     }
 
     onAddLayer = () => {
-        this.props.onAddLayer(this.props.layersNode[this.props.layerIndex1]);
+        console.log('featuresSelected1', this.props.featuresSelected1)
+        this.props.onAddLayer(this.props.featuresSelected1);
     }
 
     render() {
         return this.props.show ? (
             <Dialog Dialog id="measure-dialog" style={this?.dialogStyle} start={this?.start} >
-                {console.log(this.props.layerSelected1)}
+                {/* {console.log(this.props.layerSelected1)} */}
                 <div key="header" role="header">
                     <Glyphicon glyph="folder-open" />&nbsp;Merge
                     <button key="close" onClick={this.onClose} className="close"><Glyphicon glyph="1-close" /></button>
@@ -404,26 +404,26 @@ class MergeLayerComponent extends React.Component {
                     <br />
                     {/* {this.props.errNoLayer ? <p>please select layer</p> : null} */}
                     {
-                        this.props.loading ? 
-                        <button
-                            key="buffer-save"
-                            className="btn btn-longdo-outline-info"
-                            style={{ minWidth: "100px" }}
-                            disabled
-                        >
-                            loading...
-                        </button>
-                        :
-                        <button
-                            key="buffer-save"
-                            // onClick={this?.onSearch}
-                            className="btn btn-longdo-outline-info"
-                            style={{ minWidth: "100px" }}
-                            // id="find-route"
-                            onClick={this.onDoMerge}
-                        >
-                            Save
-                        </button>
+                        this.props.loading ?
+                            <button
+                                key="buffer-save"
+                                className="btn btn-longdo-outline-info"
+                                style={{ minWidth: "100px" }}
+                                disabled
+                            >
+                                loading...
+                            </button>
+                            :
+                            <button
+                                key="buffer-save"
+                                // onClick={this?.onSearch}
+                                className="btn btn-longdo-outline-info"
+                                style={{ minWidth: "100px" }}
+                                // id="find-route"
+                                onClick={this.onDoMerge}
+                            >
+                                Save
+                            </button>
                     }
 
                     <button
@@ -475,7 +475,7 @@ const mergelyr = connect(
         onChangeLayer1: setLayer1,
         onChangeLayer2: setLayer2,
         onDoMerge: doMerge,
-        onAddLayer: addNewLayer
+        onAddLayer: MergeAsLayer
         // onChangeUnit: setUnit,
         // onChangeRadius: setRadius,
         // onDoBuffer: doBuffer,
@@ -515,7 +515,7 @@ export default {
         mergelyr: mergelyrReducer,
     },
     epics: {
-        doMergeEpic
-        // addAsLayerEpic
+        doMergeEpic,
+        mergeAsLayerEpic
     },
 };
