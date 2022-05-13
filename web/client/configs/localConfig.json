@@ -515,10 +515,10 @@
             "FeedbackMask",
             "StyleEditor",
             "Nearby",
-            "PrintScreen",
             "FetchLayers",
             "Routing",
-            "Buffer"
+            "Buffer",
+            "MergeLayer"
         ],
         "embedded": ["Details", {
                 "name": "Map",

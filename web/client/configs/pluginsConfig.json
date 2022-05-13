@@ -282,15 +282,6 @@
       ]
     },
     {
-      "name": "PrintScreen",
-      "glyph": "search",
-      "title": "plugins.prtsc.title",
-      "description": "plugins.prtsc.description",
-      "dependencies": [
-        "BurgerMenu"
-      ]
-    },
-    {
       "name": "FetchLayers",
       "glyph": "",
       "title": "plugins.FetchLayers.title",
@@ -307,10 +298,19 @@
       ]
     },
     {
-      "name": "Buffer",
+      "name": "buffer",
       "glyph": "search",
       "title": "plugins.buffer.title",
       "description": "plugins.buffer.description",
+      "dependencies": [
+        "BurgerMenu"
+      ]
+    },
+    {
+      "name": "mergelayer",
+      "glyph": "search",
+      "title": "plugins.mergelyr.title",
+      "description": "plugins.,mergelyr.description",
       "dependencies": [
         "BurgerMenu"
       ]

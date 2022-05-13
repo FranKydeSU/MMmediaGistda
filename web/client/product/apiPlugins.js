@@ -20,7 +20,6 @@ export default {
         MapLoadingPlugin: require('../plugins/MapLoading').default,
         MapPlugin: require('../plugins/Map').default,
         NearbyPlugin: require('./plugins/Nearby').default,
-        PrintScreenPlugin: require('./plugins/PrintScreen').default,
         FetchLayerPlugin: require('./plugins/FetchLayers').default,
         OmniBarPlugin: require('../plugins/OmniBar').default,
         RoutingPlugin: require('./plugins/Routing').default,
@@ -30,7 +29,8 @@ export default {
         ZoomAllPlugin: require('../plugins/ZoomAll').default,
         FullScreenPlugin: require('../plugins/FullScreen').default,
         MousePosition: require('../plugins/MousePosition').default,
-        BufferPlugin: require('./plugins/Buffer').default
+        BufferPlugin: require('./plugins/Buffer').default, // FRANKY
+        MergeLayerPlugin: require('./plugins/MergeLayer').default
     },
     requires: {
         ReactSwipe: require('react-swipeable-views').default,

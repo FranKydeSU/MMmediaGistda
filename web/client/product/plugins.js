@@ -25,10 +25,11 @@ export default {
         MapTypePlugin: require('./plugins/MapType').default,
         NavMenu: require('./plugins/NavMenu').default,
         NearbyPlugin: require('./plugins/Nearby').default,
-        PrintScreenPlugin: require('./plugins/PrintScreen').default,
         RoutingPlugin: require('./plugins/Routing').default,
         FetchLayerPlugin: require('./plugins/FetchLayers').default,
-        BufferPlugin: require('./plugins/Buffer').default,
+        BufferPlugin: require('./plugins/Buffer').default, // FRANKY
+        MergeLayerPlugin: require('./plugins/MergeLayer').default,
+
         // framework plugins
         AddGroupPlugin: require('../plugins/AddGroup').default,
         AnnotationsPlugin: require('../plugins/Annotations').default,

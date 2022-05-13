@@ -1,13 +1,13 @@
 ## name of the LDAP server host
-ldap.host=10.0.0.173
+ldap.host=localhost
 ## port of the LDAP server
-ldap.port=389
+ldap.port=10389
 ## root path for all searches
-ldap.root=dc=longdo,dc=com
+ldap.root=dc=acme,dc=org
 ## complete DN of an LDAP user, with browse permissions on the used LDAP tree (optional, if browse is available to anoymous users)
-ldap.userDn=cn=admin,dc=longdo,dc=com
+ldap.userDn=
 ## password of the userDn LDAP user (optional, if browse is available to anoymous users)
-ldap.password=123456
+ldap.password=
 ## root path for seaching users
 ldap.userBase=ou=people
 ## root path for seaching groups

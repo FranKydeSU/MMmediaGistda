@@ -215,6 +215,7 @@ const doBufferEpic = (action$, { getState = () => { } }) =>
             ]);
         });
 
+// ส่วน Add_As_Layer ที่ยังไม่สมบูรณ์
 const addAsLayerEpic = (action$, { getState = () => { } }) =>
     action$.ofType('BUFFER:ADD_AS_LAYER')
         .switchMap(({ bufferedLayer }) => {
@@ -467,6 +468,7 @@ export default {
             text: "Buffer",
             icon: <Glyphicon glyph="resize-full" />,
             action: () => setControlProperty("buffer", "enabled", true),
+            priority: 3,
         },
     }),
     reducers: {

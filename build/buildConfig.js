@@ -280,31 +280,31 @@ module.exports = (...args) => mapArgumentsToObject(args, ({
         publicPath: "/dist/",
         proxy: proxy || {
             '/rest': {
-                target: "https://dev-mapstore.geosolutionsgroup.com/mapstore",
+                target: "https://portal-test.longdo.com/mapstore-test",
                 secure: false,
                 headers: {
-                    host: "dev-mapstore.geosolutionsgroup.com"
+                    host: "portal-test.longdo.com"
                 }
             },
             '/pdf': {
-                target: "https://dev-mapstore.geosolutionsgroup.com/mapstore",
+                target: "https://portal-test.longdo.com/mapstore-test",
                 secure: false,
                 headers: {
-                    host: "dev-mapstore.geosolutionsgroup.com"
+                    host: "portal-test.longdo.com"
                 }
             },
             '/mapstore/pdf': {
-                target: "https://dev-mapstore.geosolutionsgroup.com",
+                target: "https://portal-test.longdo.com",
                 secure: false,
                 headers: {
-                    host: "dev-mapstore.geosolutionsgroup.com"
+                    host: "portal-test.longdo.com"
                 }
             },
             '/proxy': {
-                target: "https://dev-mapstore.geosolutionsgroup.com/mapstore",
+                target: "https://portal-test.longdo.com/mapstore-test",
                 secure: false,
                 headers: {
-                    host: "dev-mapstore.geosolutionsgroup.com"
+                    host: "portal-test.longdo.com"
                 }
             },
             '/docs': {
