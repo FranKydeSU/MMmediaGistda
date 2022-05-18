@@ -254,7 +254,7 @@ function mergelyrReducer(state = defaultState, action) {
             return state
     }
 }
-
+// ส่วน epic ที่ไว้ดึง featureCollection จาก services เข้า loadFeature function
 const doMergeEpic = (action$, { getState = () => { } }) =>
     action$.ofType('MERGELYR:DO_MERGE')
         .filter(() => {
@@ -276,32 +276,10 @@ const doMergeEpic = (action$, { getState = () => { } }) =>
                 loadFeature(layerSelected1, layerSelected2)
             ]);
         });
-
+// ส่วน epic ที่ต้องการนำ features ที่ merge แล้วเพิ่มใน panel ด้านซ้ายกับวาดลงแผนที่
 const mergeAsLayerEpic = (action$) =>
     action$.ofType('MERGELYR:ADD_AS_LAYER')
         .switchMap(({ featureCollection }) => {
-            console.log('==> mergeAsLayerEpic')
-            console.log('featuresWantToAddLayer:', featureCollection)
-            // const layerFeature = convertMeasuresToGeoJSON(features, textLabels, uom, uuidv1());
-            return Rx.Observable.of(
-                // changeDrawingStatus('drawOrEdit', 'Point', 'nearbyResult', featureCollection, drawOptions),
-                addLayer({
-                    type: 'vector',
-                    id: uuidv1(),
-                    name: 'MergeLayer',
-                    hideLoading: true,
-                    features: [featureCollection.features],
-                    visibility: true
-                })
-            );
-        });
-const changeDrawingEpic = (action$, { getState = () => { } }) =>
-    action$.ofType('MERGELYR:CHANGE_DRAWING')
-        .filter(() => {
-            return (getState().controls.mergelyr || {}).enabled || false;
-        })
-        .switchMap(({featureCollection}) => {
-            console.log('==> changeDrawingEpic')
             const drawOptions = {
                 featureProjection: "EPSG:4326",
                 stopAfterDrawing: true,
@@ -310,37 +288,79 @@ const changeDrawingEpic = (action$, { getState = () => { } }) =>
                 translateEnabled: false,
                 drawEnabled: false
             };
-            // const center = getState().map.present.center;
-            // const radius = getState().nearby.radius
-            // const centerFixed = getState().nearby.centerFixed
-            // const centerLocked = getState().nearby.centerLocked
-            // const geometry = circle(
-            //     [
-            //         centerLocked ? centerFixed.x : center.x,
-            //         centerLocked ? centerFixed.y : center.y
-            //     ],
-            //     radius,
-            //     {
-            //         steps: 100,
-            //         units: 'kilometers'
-            //     }
-            // ).geometry;
-            // const radiusFeature = featureRadius(radius, geometry)
-            // const features = getState().nearby.results
-            // const featureCollection = [
-            //     {
-            //         type: "FeatureCollection",
-            //         newFeature: true,
-            //         id: uuidv1(),
-            //         geometry: null,
-            //         properties: uuidv1(),
-            //         features: [...features, radiusFeature],
-            //     },
-            // ];
-            return Rx.Observable.from([
-                changeDrawingStatus('drawOrEdit', 'Point', 'mergelyr', featureCollection, drawOptions)
-            ]);
+            console.log('==> mergeAsLayerEpic')
+            console.log('featuresWantToAddLayer:', featureCollection)
+            // const layerFeature = convertMeasuresToGeoJSON(features, textLabels, uom, uuidv1());
+            // featureCollection.properties = {}
+            // featureCollection.style = {}
+            const featureCollections = [
+                {
+                    type: "FeatureCollection",
+                    newFeature: true,
+                    id: uuidv1(),
+                    geometry: null,
+                    properties: uuidv1(),
+                    features: [...featureCollection.features],
+                },
+            ];
+            return Rx.Observable.of(
+                changeDrawingStatus('drawOrEdit', 'MultiPolygons', 'mergelyr', featureCollections, drawOptions),
+                addLayer({
+                    type: 'vector',
+                    id: uuidv1(),
+                    name: 'MergeLayer',
+                    hideLoading: true,
+                    features: [featureCollections],
+                    visibility: true
+                })
+            );
         });
+// const changeDrawingEpic = (action$, { getState = () => { } }) =>
+//     action$.ofType('MERGELYR:CHANGE_DRAWING')
+//         .filter(() => {
+//             return (getState().controls.mergelyr || {}).enabled || false;
+//         })
+//         .switchMap(({featureCollection}) => {
+//             console.log('==> changeDrawingEpic')
+//             const drawOptions = {
+//                 featureProjection: "EPSG:4326",
+//                 stopAfterDrawing: true,
+//                 editEnabled: false,
+//                 selectEnabled: true,
+//                 translateEnabled: false,
+//                 drawEnabled: false
+//             };
+//             // const center = getState().map.present.center;
+//             // const radius = getState().nearby.radius
+//             // const centerFixed = getState().nearby.centerFixed
+//             // const centerLocked = getState().nearby.centerLocked
+//             // const geometry = circle(
+//             //     [
+//             //         centerLocked ? centerFixed.x : center.x,
+//             //         centerLocked ? centerFixed.y : center.y
+//             //     ],
+//             //     radius,
+//             //     {
+//             //         steps: 100,
+//             //         units: 'kilometers'
+//             //     }
+//             // ).geometry;
+//             // const radiusFeature = featureRadius(radius, geometry)
+//             // const features = getState().nearby.results
+//             // const featureCollection = [
+//             //     {
+//             //         type: "FeatureCollection",
+//             //         newFeature: true,
+//             //         id: uuidv1(),
+//             //         geometry: null,
+//             //         properties: uuidv1(),
+//             //         features: [...features, radiusFeature],
+//             //     },
+//             // ];
+//             return Rx.Observable.from([
+//                 changeDrawingStatus('start', 'Point', 'mergelyr', featureCollection, drawOptions)
+//             ]);
+//         });
 
 const defaultState = {
     layerIndex1: -1,
@@ -392,19 +412,9 @@ class MergeLayerComponent extends React.Component {
     onChangeLayer2 = (idx) => {
         this.props.onChangeLayer2(idx)
     };
-
+    // ดึง featureCollection จาก services
     onDoMerge = () => {
         this.props.onDoMerge(this.props.layersNode[this.props.layerIndex1], this.props.layersNode[this.props.layerIndex2])
-    }
-
-    onMerge = () => { // อันนี้ลอง merge จริงๆ onDoMerge คือแค่ดึง features จาก services
-        // console.log(this.props.featuresSelected1.features, this.props.featuresSelected2.features)
-        let mergedFeatures = featureCollection(this.props.featuresSelected1.features.concat(this.props.featuresSelected2.features))
-        // mergedFeatures.features.concat(this.props.featuresSelected2.features)
-        console.log('mergedFeatures:', mergedFeatures.features)
-        // this.props.onMerge(this.props.featureLayer1)
-        this.onChangeDrawing(mergedFeatures)
-        this.onAddLayer(mergedFeatures)
     }
 
     onAddLayer = (mergedFeatures) => {
@@ -415,10 +425,17 @@ class MergeLayerComponent extends React.Component {
         this.props.onChangeDrawing(mergedFeatures)
     }
 
+    onMerge = () => { // อันนี้ลอง merge จริงๆ แต่ onDoMerge คือแค่ดึง featureCollection จาก services
+        // featureCollection คือตัวช่วยของ truf ที่เอา features 2 array มารวมกัน 'https://turfjs.org/docs/#featureCollection'
+        let mergedFeatures = featureCollection(this.props.featuresSelected1.features.concat(this.props.featuresSelected2.features))
+        console.log('mergedFeatures:', mergedFeatures.features)
+        this.onChangeDrawing(mergedFeatures)
+        this.onAddLayer(mergedFeatures)
+    }
+
     render() {
         return this.props.show ? (
             <Dialog Dialog id="measure-dialog" style={this?.dialogStyle} start={this?.start} >
-                {/* {console.log(this.props.layerSelected1)} */}
                 <div key="header" role="header">
                     <Glyphicon glyph="folder-open" />&nbsp;Merge
                     <button key="close" onClick={this.onClose} className="close"><Glyphicon glyph="1-close" /></button>
@@ -462,7 +479,6 @@ class MergeLayerComponent extends React.Component {
                             </div>
                         }></BorderLayout> */}
                     <br />
-                    {/* {this.props.errNoLayer ? <p>please select layer</p> : null} */}
                     {
                         this.props.loading ?
                             <button
@@ -578,6 +594,6 @@ export default {
     epics: {
         doMergeEpic,
         mergeAsLayerEpic,
-        changeDrawingEpic
+        // changeDrawingEpic
     },
 };
