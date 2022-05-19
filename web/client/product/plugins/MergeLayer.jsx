@@ -24,7 +24,7 @@ createControlEnabledSelector("mergelyr");
 
 const mergeLyrState = (state) => get(state, 'controls.mergelyr.enabled')
 
-const toggleBufferTool = toggleControl.bind(null, "mergelyr", null);
+// const toggleBufferTool = toggleControl.bind(null, "mergelyr", null);
 
 const layerNodesExtracter = (groups) => {
     const layerNode = []
@@ -202,7 +202,6 @@ const featureLoaded2 = function (featuresSelected2) {
 }
 
 const loading = function (isLoading) {
-    // console.log('isLoading', isLoading)
     return {
         type: 'MERGELYR:SET_LOADING',
         isLoading
@@ -304,13 +303,13 @@ const mergeAsLayerEpic = (action$) =>
                 },
             ];
             return Rx.Observable.of(
-                changeDrawingStatus('drawOrEdit', 'MultiPolygons', 'mergelyr', featureCollections, drawOptions),
+                // changeDrawingStatus('drawOrEdit', 'MultiPolygons', 'mergelyr', featureCollections, drawOptions),
                 addLayer({
                     type: 'vector',
                     id: uuidv1(),
                     name: 'MergeLayer',
                     hideLoading: true,
-                    features: [featureCollections],
+                    features: featureCollection.features,
                     visibility: true
                 })
             );

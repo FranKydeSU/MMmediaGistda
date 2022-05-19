@@ -55,10 +55,11 @@ const doBuffer = function (layerSelected, radius, unit) {
     }
 }
 
-const addAsLayer = function (bufferedFeatures) {
+const addAsLayer = function (bufferedFtCollection) {
+    console.log('action bufferedFeatures => ', bufferedFtCollection)
     return {
         type: 'BUFFER:ADD_AS_LAYER',
-        bufferedFeatures
+        bufferedFtCollection
     };
 }
 
@@ -108,11 +109,6 @@ function bufferReducer(state = defaultState, action) {
         case 'BUFFER:FEATURE_LOADED': {
             return assign({}, state, {
                 featuresSelected: action.featuresSelected,
-                bufferedFeatures: action.bufferedFeatures
-            })
-        }
-        case 'BUFFER:ADD_AS_LAYER': {
-            return assign({}, state, {
                 bufferedFeatures: action.bufferedFeatures
             })
         }
@@ -216,17 +212,18 @@ const doBufferEpic = (action$, { getState = () => { } }) =>
         });
 
 // ส่วน Add_As_Layer ที่ยังไม่สมบูรณ์
-const addAsLayerEpic = (action$, { getState = () => { } }) =>
+const addAsLayerEpic = (action$) =>
     action$.ofType('BUFFER:ADD_AS_LAYER')
-        .switchMap(({ bufferedLayer }) => {
-            console.log('bufferedLayer in epic:', bufferedLayer)
+        .switchMap(({ bufferedFtCollection }) => {
+            console.log('==> addAsLayerEpic')
+            console.log('bufferedLayer in epic:', bufferedFtCollection)
             return Rx.Observable.of(
                 addLayer({
                     type: 'vector',
                     id: uuidv1(),
-                    name: 'Measurements',
+                    name: 'BufferedLayer',
                     hideLoading: true,
-                    features: [bufferedLayer],
+                    features: bufferedFtCollection.features,
                     visibility: true
                 })
             );
@@ -461,14 +458,13 @@ export default {
     BufferPlugin: assign(buffer, {
         BurgerMenu: {
             name: "buffer",
-            position: 9,
+            position: 10,
             panel: false,
             help: "help",
             tooltip: "tooltip",
             text: "Buffer",
             icon: <Glyphicon glyph="resize-full" />,
             action: () => setControlProperty("buffer", "enabled", true),
-            priority: 3,
         },
     }),
     reducers: {

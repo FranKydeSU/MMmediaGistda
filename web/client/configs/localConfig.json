@@ -517,8 +517,7 @@
             "Nearby",
             "FetchLayers",
             "Routing",
-            "Buffer",
-            "MergeLayer"
+            "Buffer"
         ],
         "embedded": ["Details", {
                 "name": "Map",

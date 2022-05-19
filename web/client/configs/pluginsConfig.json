@@ -298,7 +298,7 @@
       ]
     },
     {
-      "name": "buffer",
+      "name": "Buffer",
       "glyph": "search",
       "title": "plugins.buffer.title",
       "description": "plugins.buffer.description",
@@ -310,7 +310,7 @@
       "name": "mergelayer",
       "glyph": "search",
       "title": "plugins.mergelyr.title",
-      "description": "plugins.,mergelyr.description",
+      "description": "plugins.mergelyr.description",
       "dependencies": [
         "BurgerMenu"
       ]
