@@ -19,12 +19,13 @@ import LayerSelector from './mergelayer/LayerSelector'
 import { groupsSelector, layersSelector } from '../../selectors/layers'
 import { addLayer } from '../../actions/layers'
 import { changeDrawingStatus } from '../../actions/draw';
+import { all } from 'lodash/fp';
 
 createControlEnabledSelector("mergelyr");
 
 const mergeLyrState = (state) => get(state, 'controls.mergelyr.enabled')
 
-// const toggleBufferTool = toggleControl.bind(null, "mergelyr", null);
+const toggleBufferTool = toggleControl.bind(null, "mergelyr", null);
 
 const layerNodesExtracter = (groups) => {
     const layerNode = []
@@ -35,8 +36,8 @@ const layerNodesExtracter = (groups) => {
 }
 
 const loadFeature = function (layerSelected1, layerSelected2) {
-    console.log('layerSelected1: ', layerSelected1)
-    console.log('layerSelected2: ', layerSelected2)
+    console.log('LayerSelected1=', layerSelected1)
+    console.log('LayerSelected2=', layerSelected2)
     if (!layerSelected1 || !layerSelected2) {
         layerSelected1 = {}
         layerSelected2 = {}
@@ -53,7 +54,7 @@ const loadFeature = function (layerSelected1, layerSelected2) {
                 outputFormat: 'application/json'
             }
         }).then(({ data }) => {
-            console.log('--Can get LayerFeatures--')
+            console.log('==CanGetLayerFeatures==')
             let featureLayer1 = data
             console.log('featureLayer1: ', featureLayer1)
             dispatch(featureLoaded1(featureLayer1))
@@ -412,23 +413,25 @@ class MergeLayerComponent extends React.Component {
         this.props.onChangeLayer2(idx)
     };
     // ดึง featureCollection จาก services
-    onDoMerge = () => {
-        this.props.onDoMerge(this.props.layersNode[this.props.layerIndex1], this.props.layersNode[this.props.layerIndex2])
+    onDoMerge = async () => {
+        await this.props.onDoMerge(this.props.layersNode[this.props.layerIndex1], this.props.layersNode[this.props.layerIndex2])
+        // this.onMerge()
     }
 
     onAddLayer = (mergedFeatures) => {
         this.props.onAddLayer(mergedFeatures);
     }
 
-    onChangeDrawing = (mergedFeatures) => {
-        this.props.onChangeDrawing(mergedFeatures)
-    }
+    // onChangeDrawing = (mergedFeatures) => {
+    //     this.props.onChangeDrawing(mergedFeatures)
+    // }
 
     onMerge = () => { // อันนี้ลอง merge จริงๆ แต่ onDoMerge คือแค่ดึง featureCollection จาก services
         // featureCollection คือตัวช่วยของ truf ที่เอา features 2 array มารวมกัน 'https://turfjs.org/docs/#featureCollection'
         let mergedFeatures = featureCollection(this.props.featuresSelected1.features.concat(this.props.featuresSelected2.features))
         console.log('mergedFeatures:', mergedFeatures.features)
-        this.onChangeDrawing(mergedFeatures)
+        console.log('allLayers', this.props.allLayers)
+        // this.onChangeDrawing(mergedFeatures)
         this.onAddLayer(mergedFeatures)
     }
 
@@ -534,14 +537,16 @@ const mergelyr = connect(
             (state) => {
                 return mergeLyrState(state);
             },
-            groupsSelector
+            groupsSelector,
+            layersSelector
         ],
-        (mergeLyrState, show, layersGroups) => {
+        (mergeLyrState, show, layersGroups, allLayers) => {
             return {
                 ...mergeLyrState,
                 show,
                 layersGroups,
-                layersNode: layerNodesExtracter(layersGroups)
+                layersNode: layerNodesExtracter(layersGroups),
+                allLayers
             };
         }
     ),
