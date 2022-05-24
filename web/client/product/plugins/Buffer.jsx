@@ -25,97 +25,7 @@ createControlEnabledSelector("buffer");
 
 const bufferState = (state) => get(state, 'controls.buffer.enabled')
 
-const setLayer = function (idx) {
-    return {
-        type: 'BUFFER:SET_LAYER',
-        index: idx
-    }
-}
-
-const setRadius = function (radius) {
-    return {
-        type: 'BUFFER:SET_RADIUS',
-        radius
-    }
-}
-
-const setUnit = function (unit) {
-    return {
-        type: 'BUFFER:SET_UNIT',
-        unitValue: unit
-    }
-}
-
-const doBuffer = function (layerSelected, radius, unit) {
-    return {
-        type: 'BUFFER:DO_BUFFER',
-        layerSelected,
-        radius,
-        unit
-    }
-}
-
-const addAsLayer = function (bufferedFtCollection) {
-    console.log('action bufferedFeatures => ', bufferedFtCollection)
-    return {
-        type: 'BUFFER:ADD_AS_LAYER',
-        bufferedFtCollection
-    };
-}
-
-const featureLoaded = function (featuresSelected, bufferedFeatures) {
-    return {
-        type: 'BUFFER:FEATURE_LOADED',
-        featuresSelected,
-        bufferedFeatures
-    };
-};
-
-// const clearLoadFeature = function () {
-//     return (dispatch) => {
-//         dispatch(featureLoaded([]));
-//     }
-// }
-
 const toggleBufferTool = toggleControl.bind(null, "buffer", null);
-
-const selector = (state) => {
-    return {
-        layerIndex: state.buffer.layerIndex,
-        unitValue: state.buffer.unitValue,
-        radius: state.buffer.radius,
-        featuresSelected: state.buffer.featuresSelected,
-        bufferedFeatures: state.buffer.bufferedFeatures
-    };
-};
-
-function bufferReducer(state = defaultState, action) {
-    switch (action.type) {
-        case 'BUFFER:SET_LAYER': {
-            return assign({}, state, {
-                layerIndex: action.index
-            })
-        }
-        case 'BUFFER:SET_UNIT': {
-            return assign({}, state, {
-                unitValue: action.unitValue
-            })
-        }
-        case 'BUFFER:SET_RADIUS': {
-            return assign({}, state, {
-                radius: action.radius
-            })
-        }
-        case 'BUFFER:FEATURE_LOADED': {
-            return assign({}, state, {
-                featuresSelected: action.featuresSelected,
-                bufferedFeatures: action.bufferedFeatures
-            })
-        }
-        default:
-            return state
-    }
-}
 
 const layerNodesExtracter = (groups) => {
     const layerNode = []
@@ -125,72 +35,224 @@ const layerNodesExtracter = (groups) => {
     return layerNode
 }
 
+const BUFFER_SET_LAYER = "BUFFER_SET_LAYER"
+const BUFFER_SET_RADIUS = "BUFFER:SET_RADIUS"
+const BUFFER_SET_UNIT = "BUFFER_SET_UNIT"
+const BUFFER_DO_BUFFER = "BUFFER_DO_BUFFER"
+const BUFFER_ADD_AS_LAYER = "BUFFER_ADD_AS_LAYER"
+const BUFFER_FEATURE_LOADED = "BUFFER_FEATURE_LOADED"
+const BUFFER_SET_LOADING = "BUFFER_SET_LOADING"
+const BUFFER_FETCH_FAILURE = "BUFFER:FETCH_FAILURE"
+
+const setLayer = function (idx) {
+    return {
+        type: BUFFER_SET_LAYER,
+        index: idx
+    }
+}
+
+const setRadius = function (radius) {
+    return {
+        type: BUFFER_SET_RADIUS,
+        radius
+    }
+}
+
+const setUnit = function (unit) {
+    return {
+        type: BUFFER_SET_UNIT,
+        unitValue: unit
+    }
+}
+
+const doBuffer = function (layerSelected, radius, unit) {
+    return {
+        type: BUFFER_DO_BUFFER,
+        layerSelected,
+        radius,
+        unit
+    }
+}
+
+const addAsLayer = function (bufferedFtCollection) {
+    console.log('action bufferedFeatures => ', bufferedFtCollection)
+    return {
+        type: BUFFER_ADD_AS_LAYER,
+        bufferedFtCollection
+    };
+}
+
+const featureLoaded = function (featuresSelected, bufferedFeatures) {
+    return {
+        type: BUFFER_FEATURE_LOADED,
+        featuresSelected,
+        bufferedFeatures
+    };
+};
+
+const loading = function (isLoading) {
+    return {
+        type: BUFFER_SET_LOADING,
+        isLoading
+    }
+}
+
+const fetchGeoJsonFailure = function (error) {
+    console.log('fetchGeoJsonFailure', error)
+    return {
+        type: BUFFER_FETCH_FAILURE,
+        error
+    }
+}
+
+// const clearLoadFeature = function () {
+//     return (dispatch) => {
+//         dispatch(featureLoaded([]));
+//     }
+// }
+
+const selector = (state) => {
+    return {
+        layerIndex: state.buffer.layerIndex,
+        unitValue: state.buffer.unitValue,
+        radius: state.buffer.radius,
+        featuresSelected: state.buffer.featuresSelected,
+        bufferedFeatures: state.buffer.bufferedFeatures,
+        loading: state.buffer.loading,
+        error: state.buffer.error
+    };
+};
+
+function bufferReducer(state = defaultState, action) {
+    switch (action.type) {
+        case BUFFER_SET_LAYER: {
+            return assign({}, state, {
+                layerIndex: action.index
+            })
+        }
+        case BUFFER_SET_UNIT: {
+            return assign({}, state, {
+                unitValue: action.unitValue
+            })
+        }
+        case BUFFER_SET_RADIUS: {
+            return assign({}, state, {
+                radius: action.radius
+            })
+        }
+        case BUFFER_FEATURE_LOADED: {
+            return assign({}, state, {
+                featuresSelected: action.featuresSelected,
+                bufferedFeatures: action.bufferedFeatures
+            })
+        }
+        case BUFFER_SET_LOADING: {
+            return assign({}, state, {
+                loading: action.isLoading
+            })
+        }
+        case BUFFER_FETCH_FAILURE: {
+            return assign({}, state, {
+                error: action.error
+            })
+        }
+        default:
+            return state
+    }
+}
+
 const loadFeature = function (layerSelected, radius, uom) {
     if (!layerSelected) {
-        layerSelected = {}
+        return (dispatch) => {
+            dispatch(fetchGeoJsonFailure('Please select layers.'))
+        }
     }
     const DEFAULT_API = 'https://geonode.longdo.com/geoserver/wfs';
     return (dispatch) => {
-        axios.get(`${layerSelected.url || DEFAULT_API}`, {
-            params: {
-                service: 'WFS',
-                version: layerSelected.version,
-                request: 'GetFeature',
-                typeName: layerSelected.name,
-                outputFormat: 'application/json'
-            }
-        }).then(({ data }) => {
-            console.log('- Can get featureLayer -')
-            let featureLayer = data
-            console.log('featureLayer: ', featureLayer)
-            let bufferedLayer = turfBuffer(featureLayer, radius, { units: uom });
+        dispatch(loading(true))
+        dispatch(fetchGeoJsonFailure(''))
+        let getFeature = new Promise((resolve, reject) => {
+            let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`,
+                {
+                    params: {
+                        service: 'WFS',
+                        version: layerSelected.version,
+                        request: 'GetFeature',
+                        typeName: layerSelected.name,
+                        outputFormat: 'application/json'
+                    }
+                })
+            resolve(getFromAPI)
+        })
+        getFeature.then((value) => {
+            let featureGeoJson = value.data
+            console.log('featureGeoJson: ', featureGeoJson)
+            let bufferedLayer = turfBuffer(featureGeoJson, radius, { units: uom });
             console.log('bufferedLayer: ', bufferedLayer)
-            dispatch(featureLoaded(featureLayer, bufferedLayer))
-            //         try {
-            //             const layerType = layerInfo.properties.find((layerType) => { return layerType.localType === 'Point' })
-            //             if (layerType.name !== null || layerType.name !== 'undefined') {
-            //                 const positionPoint = center.y + ' ' + center.x
-            //                 axios.get(`${layerSelected.url || DEFAULT_API}`, {
-            //                     params: {
-            //                         service: 'WFS',
-            //                         version: layerSelected.version,
-            //                         request: 'GetFeature',
-            //                         typeNames: layerSelected.name,
-            //                         outputFormat: 'application/json',
-            //                         SRSName: 'EPSG:4326',
-            //                         cql_filter: `DWithin(${layerType.name},POINT(${positionPoint}),${radius},meters)`
-            //                     }
-            //                 }).then((response) => {
-            //                     console.log(response.data)
-            //                     var featuresGeoJson = response.data.features
-            //                     featuresGeoJson.map((geoJson) => {
-            //                         if (geoJson.geometry.type === 'Point') {
-            //                             geoJson['style'] = {
-            //                                 iconGlyph: "map-marker",
-            //                                 iconShape: "circle",
-            //                                 iconColor: "blue",
-            //                                 highlight: false,
-            //                                 id: uuidv1()
-            //                             }
-            //                         }
-            //                     })
-            //                     featuresGeoJson.push(radiusFeature)
-            //                     dispatch(featureLoaded(featuresGeoJson));
-            //                 })
-            //             }
-            //         } catch (error) {
-            //             console.log(error)
-            //             dispatch(featureLoaded([]));
-            //         }
-        }).catch((e) => {
-            console.log(e);
-            // dispatch(featureLoaded([]));
-        });
+            dispatch(addAsLayer(bufferedLayer))
+            dispatch(loading(false))
+        })
+
+        // axios.get(`${layerSelected.url || DEFAULT_API}`, {
+        //     params: {
+        //         service: 'WFS',
+        //         version: layerSelected.version,
+        //         request: 'GetFeature',
+        //         typeName: layerSelected.name,
+        //         outputFormat: 'application/json'
+        //     }
+        // }).then(({ data }) => {
+        //     console.log('- Can get featureLayer -')
+        //     let featureLayer = data
+        //     console.log('featureLayer: ', featureLayer)
+        //     let bufferedLayer = turfBuffer(featureLayer, radius, { units: uom });
+        //     console.log('bufferedLayer: ', bufferedLayer)
+        //     dispatch(featureLoaded(featureLayer, bufferedLayer))
+        //         try {
+        //             const layerType = layerInfo.properties.find((layerType) => { return layerType.localType === 'Point' })
+        //             if (layerType.name !== null || layerType.name !== 'undefined') {
+        //                 const positionPoint = center.y + ' ' + center.x
+        //                 axios.get(`${layerSelected.url || DEFAULT_API}`, {
+        //                     params: {
+        //                         service: 'WFS',
+        //                         version: layerSelected.version,
+        //                         request: 'GetFeature',
+        //                         typeNames: layerSelected.name,
+        //                         outputFormat: 'application/json',
+        //                         SRSName: 'EPSG:4326',
+        //                         cql_filter: `DWithin(${layerType.name},POINT(${positionPoint}),${radius},meters)`
+        //                     }
+        //                 }).then((response) => {
+        //                     console.log(response.data)
+        //                     var featuresGeoJson = response.data.features
+        //                     featuresGeoJson.map((geoJson) => {
+        //                         if (geoJson.geometry.type === 'Point') {
+        //                             geoJson['style'] = {
+        //                                 iconGlyph: "map-marker",
+        //                                 iconShape: "circle",
+        //                                 iconColor: "blue",
+        //                                 highlight: false,
+        //                                 id: uuidv1()
+        //                             }
+        //                         }
+        //                     })
+        //                     featuresGeoJson.push(radiusFeature)
+        //                     dispatch(featureLoaded(featuresGeoJson));
+        //                 })
+        //             }
+        //         } catch (error) {
+        //             console.log(error)
+        //             dispatch(featureLoaded([]));
+        //         }
+        //         }).catch((e) => {
+        //             console.log(e);
+        //             // dispatch(featureLoaded([]));
+        //         });
     };
 };
 
 const doBufferEpic = (action$, { getState = () => { } }) =>
-    action$.ofType('BUFFER:DO_BUFFER')
+    action$.ofType(BUFFER_DO_BUFFER)
         .filter(() => {
             return (getState().controls.buffer || {}).enabled || false;
         })
@@ -213,7 +275,7 @@ const doBufferEpic = (action$, { getState = () => { } }) =>
 
 // ส่วน Add_As_Layer ที่ยังไม่สมบูรณ์
 const addAsLayerEpic = (action$) =>
-    action$.ofType('BUFFER:ADD_AS_LAYER')
+    action$.ofType(BUFFER_ADD_AS_LAYER)
         .switchMap(({ bufferedFtCollection }) => {
             console.log('==> addAsLayerEpic')
             console.log('bufferedLayer in epic:', bufferedFtCollection)
@@ -232,7 +294,9 @@ const addAsLayerEpic = (action$) =>
 const defaultState = {
     radius: 1,
     layerIndex: -1,
-    unitValue: "kilometers"
+    unitValue: "kilometers",
+    loading: false,
+    error: ''
 }
 
 // Component part
@@ -240,14 +304,17 @@ class BufferDialog extends React.Component {
     static propTypes = {
         show: PropTypes.bool,
         radius: PropTypes.number,
-        onClose: PropTypes.func,
         bufferLengthValue: PropTypes.array,
         layersNode: PropTypes.array,
         layersGroups: PropTypes.array,
         layerIndex: PropTypes.number,
+        unitValue: PropTypes.string,
+        loading: PropTypes.bool,
+        error: PropTypes.string,
+
+        onClose: PropTypes.func,
         onChangeLayer: PropTypes.func,
         onChangeUnit: PropTypes.func,
-        unitValue: PropTypes.string,
         onDoBuffer: PropTypes.func,
         onAddAsLayer: PropTypes.func,
     }
@@ -264,7 +331,12 @@ class BufferDialog extends React.Component {
         layersGroups: [],
         layerIndex: -1,
         unitValue: '',
-        onAddAsLayer: () => { } // อาจแก้ Epic เพราะของ measurement แปลงเป็น GeoJSON ก่อน add ต้องแก่เป็นของ buffer
+
+        onClose: () => { },
+        onChangeLayer: () => { },
+        onChangeUnit: () => { },
+        onDoBuffer: () => { },
+        onAddAsLayer: () => { }, // อาจแก้ Epic เพราะของ measurement แปลงเป็น GeoJSON ก่อน add ต้องแก่เป็นของ buffer
     };
 
     onClose = () => {
@@ -275,8 +347,7 @@ class BufferDialog extends React.Component {
         this.props.onChangeLayer(idx)
     };
 
-    onDoBuffer = (e) => {
-        e.preventDefault();
+    onDoBuffer = () => {
         console.log('radius:', this.props.radius)
         console.log('unit:', this.props.unitValue)
         this.props.onDoBuffer(this.props.layersNode[this.props.layerIndex], this.props.radius, this.props.unitValue)
@@ -294,6 +365,10 @@ class BufferDialog extends React.Component {
         console.log('-=onAddAsLayer=-');
         console.log('bufferedFeatures:', this.props.bufferedFeatures)
         this.props.onAddAsLayer(this.props.bufferedFeatures)
+    }
+
+    onReset = () => {
+        this.props.onChangeLayer(-1)
     }
 
     render() {
@@ -367,39 +442,48 @@ class BufferDialog extends React.Component {
                                 </ButtonToolbar>
                             </div>
                         }></BorderLayout> */}
-                    <br />
-                    {/* {this.props.errNoLayer ? <p>please select layer</p> : null} */}
-                    <button
-                        key="buffer-save"
-                        // onClick={this?.onSearch}
-                        className="btn btn-longdo-outline-info"
-                        style={{ minWidth: "100px" }}
-                        // id="find-route"
-                        onClick={this.onDoBuffer}
-                    >
-                        Save
-                    </button>
-
-                    <button
-                        key="clear-routing"
-                        onClick={this.onClearSearch}
-                        className="btn btn-longdo-outline"
+                    <div
                         style={{
-                            minWidth: "90px",
-                            marginRight: "5px",
-                        }}
-                    >
-                        Cancel
-                    </button>
+                            display: "flex"
+                        }}>
+                        <br />
+                        {
+                            this.props.loading ?
+                                <button
+                                    key="buffer-save"
+                                    className="btn btn-longdo-outline-info"
+                                    style={{ minWidth: "100px" }}
+                                    disabled
+                                >
+                                    loading...
+                                </button>
+                                :
+                                <button
+                                    key="buffer-save"
+                                    // onClick={this?.onSearch}
+                                    className="btn btn-longdo-outline-info"
+                                    style={{ minWidth: "100px" }}
+                                    // id="find-route"
+                                    onClick={this.onDoBuffer}
+                                >
+                                    Save
+                                </button>
+                        }
 
-                    <button
-                        className="btn btn-longdo-outline-info"
-                        onClick={this.onAddAsLayer}
-                        style={{ minWidth: "100px" }}
-                    >
-                        ADD
-                    </button>
+                        <button
+                            key="clear-routing"
+                            onClick={this.onReset}
+                            className="btn btn-longdo-outline"
+                            style={{
+                                minWidth: "90px",
+                                marginRight: "5px",
+                            }}
+                        >
+                            Clear
+                        </button>
 
+                        <p style={{ color: "red" }}>{this.props.error}</p>
+                    </div>
                 </div>
             </Dialog >
         ) : null

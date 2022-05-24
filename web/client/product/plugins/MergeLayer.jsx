@@ -36,123 +36,103 @@ const layerNodesExtracter = (groups) => {
 }
 
 const loadFeature = function (layerSelected1, layerSelected2) {
-    console.log('LayerSelected1=', layerSelected1)
-    console.log('LayerSelected2=', layerSelected2)
+    console.log('LayerSelected1 ', layerSelected1)
+    console.log('LayerSelected2 ', layerSelected2)
     if (!layerSelected1 || !layerSelected2) {
-        layerSelected1 = {}
-        layerSelected2 = {}
+        // layerSelected1 = {}
+        // layerSelected2 = {}
+        return (dispatch) => {
+            dispatch(fetchGeoJsonFailure('Please select 2 layers.'))
+        }
+    } else if (layerSelected1.title === layerSelected2.title) {
+        // layerSelected1 = {}
+        // layerSelected2 = {}
+        return (dispatch) => {
+            dispatch(fetchGeoJsonFailure('Please don\'t selected same layer.'))
+        }
     }
     const DEFAULT_API = 'https://geonode.longdo.com/geoserver/wfs';
     return (dispatch, getState) => {
         dispatch(loading(true))
-        axios.get(`${layerSelected1.url || DEFAULT_API}`, {
-            params: {
-                service: 'WFS',
-                version: layerSelected1.version,
-                request: 'GetFeature',
-                typeName: layerSelected1.name,
-                outputFormat: 'application/json'
-            }
-        }).then(({ data }) => {
-            console.log('==CanGetLayerFeatures==')
-            let featureLayer1 = data
-            console.log('featureLayer1: ', featureLayer1)
-            dispatch(featureLoaded1(featureLayer1))
-            //         try {
-            //             const layerType = layerInfo.properties.find((layerType) => { return layerType.localType === 'Point' })
-            //             if (layerType.name !== null || layerType.name !== 'undefined') {
-            //                 const positionPoint = center.y + ' ' + center.x
-            //                 axios.get(`${layerSelected.url || DEFAULT_API}`, {
-            //                     params: {
-            //                         service: 'WFS',
-            //                         version: layerSelected.version,
-            //                         request: 'GetFeature',
-            //                         typeNames: layerSelected.name,
-            //                         outputFormat: 'application/json',
-            //                         SRSName: 'EPSG:4326',
-            //                         cql_filter: `DWithin(${layerType.name},POINT(${positionPoint}),${radius},meters)`
-            //                     }
-            //                 }).then((response) => {
-            //                     console.log(response.data)
-            //                     var featuresGeoJson = response.data.features
-            //                     featuresGeoJson.map((geoJson) => {
-            //                         if (geoJson.geometry.type === 'Point') {
-            //                             geoJson['style'] = {
-            //                                 iconGlyph: "map-marker",
-            //                                 iconShape: "circle",
-            //                                 iconColor: "blue",
-            //                                 highlight: false,
-            //                                 id: uuidv1()
-            //                             }
-            //                         }
-            //                     })
-            //                     featuresGeoJson.push(radiusFeature)
-            //                     dispatch(featureLoaded(featuresGeoJson));
-            //                 })
-            //             }
-            //         } catch (error) {
-            //             console.log(error)
-            //             dispatch(featureLoaded([]));
-            //         }
-        }).catch((e) => {
-            console.log(e);
-            dispatch(featureLoaded1([]));
+        dispatch(fetchGeoJsonFailure(''))
+        let getFeature1 = new Promise((resolve, reject) => {
+            let getFromAPI = axios.get(`${layerSelected1.url || DEFAULT_API}`,
+                {
+                    params: {
+                        service: 'WFS',
+                        version: layerSelected1.version,
+                        request: 'GetFeature',
+                        typeName: layerSelected1.name,
+                        outputFormat: 'application/json'
+                    }
+                })
+            resolve(getFromAPI);
+        })
+        getFeature1.then(value => console.log('value.data', value.data))
+        // axios.get(`${layerSelected1.url || DEFAULT_API}`, {
+        //     params: {
+        //         service: 'WFS',
+        //         version: layerSelected1.version,
+        //         request: 'GetFeature',
+        //         typeName: layerSelected1.name,
+        //         outputFormat: 'application/json'
+        //     }
+        // }).then(({ data }) => {
+        //     console.log('==CanGetLayerFeatures==')
+        //     let featureLayer1 = data
+        //     console.log('featureLayer1: ', featureLayer1)
+        //     dispatch(featureLoaded1(featureLayer1))
+        // }).catch((e) => {
+        //     console.log(e);
+        //     dispatch(featureLoaded1([]));
+        //     dispatch(loading(false))
+        // });
+        let getFeature2 = new Promise((resolve, reject) => {
+            let getFromAPI = axios.get(`${layerSelected2.url || DEFAULT_API}`,
+                {
+                    params: {
+                        service: 'WFS',
+                        version: layerSelected2.version,
+                        request: 'GetFeature',
+                        typeName: layerSelected2.name,
+                        outputFormat: 'application/json'
+                    }
+                })
+            resolve(getFromAPI);
+        })
+
+        Promise.all([getFeature1, getFeature2]).then(value => {
+            let mergedFeatures = featureCollection(value[0].data.features.concat(value[1].data.features))
+            console.log('mergedFeatures:', mergedFeatures)
+            dispatch(featureLoaded1(value[0].data))
+            dispatch(featureLoaded2(value[1].data))
+            dispatch(mergeAsLayer(mergedFeatures))
             dispatch(loading(false))
-        });
-        axios.get(`${layerSelected2.url || DEFAULT_API}`, {
-            params: {
-                service: 'WFS',
-                version: layerSelected2.version,
-                request: 'GetFeature',
-                typeName: layerSelected2.name,
-                outputFormat: 'application/json'
-            }
-        }).then(({ data }) => {
-            let featureLayer2 = data
-            console.log('featureLayer2: ', featureLayer2)
-            dispatch(featureLoaded2(featureLayer2))
+        }).catch((error) => {
+            dispatch(fetchGeoJsonFailure(error))
             dispatch(loading(false))
-            //         try {
-            //             const layerType = layerInfo.properties.find((layerType) => { return layerType.localType === 'Point' })
-            //             if (layerType.name !== null || layerType.name !== 'undefined') {
-            //                 const positionPoint = center.y + ' ' + center.x
-            //                 axios.get(`${layerSelected.url || DEFAULT_API}`, {
-            //                     params: {
-            //                         service: 'WFS',
-            //                         version: layerSelected.version,
-            //                         request: 'GetFeature',
-            //                         typeNames: layerSelected.name,
-            //                         outputFormat: 'application/json',
-            //                         SRSName: 'EPSG:4326',
-            //                         cql_filter: `DWithin(${layerType.name},POINT(${positionPoint}),${radius},meters)`
-            //                     }
-            //                 }).then((response) => {
-            //                     console.log(response.data)
-            //                     var featuresGeoJson = response.data.features
-            //                     featuresGeoJson.map((geoJson) => {
-            //                         if (geoJson.geometry.type === 'Point') {
-            //                             geoJson['style'] = {
-            //                                 iconGlyph: "map-marker",
-            //                                 iconShape: "circle",
-            //                                 iconColor: "blue",
-            //                                 highlight: false,
-            //                                 id: uuidv1()
-            //                             }
-            //                         }
-            //                     })
-            //                     featuresGeoJson.push(radiusFeature)
-            //                     dispatch(featureLoaded(featuresGeoJson));
-            //                 })
-            //             }
-            //         } catch (error) {
-            //             console.log(error)
-            //             dispatch(featureLoaded([]));
-            //         }
-        }).catch((e) => {
-            console.log(e);
-            dispatch(featureLoaded2([]));
-            dispatch(loading(false))
-        });
+        })
+        // axios.get(`${layerSelected2.url || DEFAULT_API}`, {
+        //     params: {
+        //         service: 'WFS',
+        //         version: layerSelected2.version,
+        //         request: 'GetFeature',
+        //         typeName: layerSelected2.name,
+        //         outputFormat: 'application/json'
+        //     }
+        // }).then(({ data }) => {
+        //     let featureLayer2 = data
+        //     console.log('featureLayer2: ', featureLayer2)
+        //     dispatch(featureLoaded2(featureLayer2))
+        //     dispatch(loading(false))
+        // }).catch((e) => {
+        //     console.log(e);
+        //     dispatch(featureLoaded2([]));
+        //     dispatch(loading(false))
+        // });
+        // let mergedFeatures = featureCollection(this.props.featuresSelected1.features.concat(this.props.featuresSelected2.features))
+        // console.log('mergedFeatures:', mergedFeatures)
+        // console.log('allLayers', this.props.allLayers)
     };
 };
 
@@ -162,27 +142,38 @@ const selector = (state) => {
         layerIndex2: state.mergelyr.layerIndex2,
         featuresSelected1: state.mergelyr.featuresSelected1,
         featuresSelected2: state.mergelyr.featuresSelected2,
-        loading: state.mergelyr.loading
+        loading: state.mergelyr.loading,
+        error: state.mergelyr.error
     };
 };
 
+const MERGELYR_SET_LAYER_1 = "MERGELYR_SET_LAYER_1"
+const MERGELYR_SET_LAYER_2 = "MERGELYR_SET_LAYER_2"
+const MERGELYR_DO_MERGE = "MERGELYR_DO_MERGE"
+const MERGELYR_FEATURE_LOADED_1 = "MERGELYR_FEATURE_LOADED_1"
+const MERGELYR_FEATURE_LOADED_2 = "MERGELYR_FEATURE_LOADED_2"
+const MERGELYR_SET_LOADING = "MERGELYR_SET_LOADING"
+const MERGELYR_ADD_AS_LAYER = "MERGELYR_ADD_AS_LAYER"
+const MERGELYR_CHANGE_DRAWING = "MERGELYR_CHANGE_DRAWING"
+const MERGELYR_FETCH_FAILURE = "MERGELYR:FETCH_FAILURE"
+
 const setLayer1 = function (idx) {
     return {
-        type: 'MERGELYR:SET_LAYER_1',
+        type: MERGELYR_SET_LAYER_1,
         index1: idx
     }
 }
 
 const setLayer2 = function (idx) {
     return {
-        type: 'MERGELYR:SET_LAYER_2',
+        type: MERGELYR_SET_LAYER_2,
         index2: idx
     }
 }
 
 const doMerge = function (layerSelected1, layerSelected2) {
     return {
-        type: 'MERGELYR:DO_MERGE',
+        type: MERGELYR_DO_MERGE,
         layerSelected1,
         layerSelected2
     }
@@ -190,64 +181,77 @@ const doMerge = function (layerSelected1, layerSelected2) {
 
 const featureLoaded1 = function (featuresSelected1) {
     return {
-        type: 'MERGELYR:FEATURE_LOADED_1',
+        type: MERGELYR_FEATURE_LOADED_1,
         featuresSelected1
     }
 }
 
 const featureLoaded2 = function (featuresSelected2) {
     return {
-        type: 'MERGELYR:FEATURE_LOADED_2',
+        type: MERGELYR_FEATURE_LOADED_2,
         featuresSelected2
     }
 }
 
 const loading = function (isLoading) {
     return {
-        type: 'MERGELYR:SET_LOADING',
+        type: MERGELYR_SET_LOADING,
         isLoading
     }
 }
 
-const MergeAsLayer = function (featureCollection) {
+const mergeAsLayer = function (featureCollection) {
     return {
-        type: 'MERGELYR:ADD_AS_LAYER',
+        type: MERGELYR_ADD_AS_LAYER,
         featureCollection
     };
 }
 
 const changeDrawing = function (featureCollection) {
     return {
-        type: 'MERGELYR:CHANGE_DRAWING',
+        type: MERGELYR_CHANGE_DRAWING,
         featureCollection
     };
 }
 
+const fetchGeoJsonFailure = function (error) {
+    console.log('fetchGeoJsonFailure', error)
+    return {
+        type: MERGELYR_FETCH_FAILURE,
+        error
+    }
+}
+
 function mergelyrReducer(state = defaultState, action) {
     switch (action.type) {
-        case 'MERGELYR:SET_LAYER_1': {
+        case MERGELYR_SET_LAYER_1: {
             return assign({}, state, {
                 layerIndex1: action.index1
             })
         }
-        case 'MERGELYR:SET_LAYER_2': {
+        case MERGELYR_SET_LAYER_2: {
             return assign({}, state, {
                 layerIndex2: action.index2
             })
         }
-        case 'MERGELYR:FEATURE_LOADED_1': {
+        case MERGELYR_FEATURE_LOADED_1: {
             return assign({}, state, {
                 featuresSelected1: action.featuresSelected1,
             })
         }
-        case 'MERGELYR:FEATURE_LOADED_2': {
+        case MERGELYR_FEATURE_LOADED_2: {
             return assign({}, state, {
                 featuresSelected2: action.featuresSelected2
             })
         }
-        case 'MERGELYR:SET_LOADING': {
+        case MERGELYR_SET_LOADING: {
             return assign({}, state, {
                 loading: action.isLoading
+            })
+        }
+        case MERGELYR_FETCH_FAILURE: {
+            return assign({}, state, {
+                error: action.error
             })
         }
         default:
@@ -256,7 +260,7 @@ function mergelyrReducer(state = defaultState, action) {
 }
 // ส่วน epic ที่ไว้ดึง featureCollection จาก services เข้า loadFeature function
 const doMergeEpic = (action$, { getState = () => { } }) =>
-    action$.ofType('MERGELYR:DO_MERGE')
+    action$.ofType(MERGELYR_DO_MERGE)
         .filter(() => {
             return (getState().controls.mergelyr || {}).enabled || false;
         })
@@ -278,7 +282,7 @@ const doMergeEpic = (action$, { getState = () => { } }) =>
         });
 // ส่วน epic ที่ต้องการนำ features ที่ merge แล้วเพิ่มใน panel ด้านซ้ายกับวาดลงแผนที่
 const mergeAsLayerEpic = (action$) =>
-    action$.ofType('MERGELYR:ADD_AS_LAYER')
+    action$.ofType(MERGELYR_ADD_AS_LAYER)
         .switchMap(({ featureCollection }) => {
             const drawOptions = {
                 featureProjection: "EPSG:4326",
@@ -289,7 +293,7 @@ const mergeAsLayerEpic = (action$) =>
                 drawEnabled: false
             };
             console.log('==> mergeAsLayerEpic')
-            console.log('featuresWantToAddLayer:', featureCollection)
+            // console.log('featuresWantToAddLayer:', featureCollection)
             // const layerFeature = convertMeasuresToGeoJSON(features, textLabels, uom, uuidv1());
             // featureCollection.properties = {}
             // featureCollection.style = {}
@@ -298,11 +302,21 @@ const mergeAsLayerEpic = (action$) =>
                     type: "FeatureCollection",
                     newFeature: true,
                     id: uuidv1(),
-                    geometry: null,
+                    geometry: [...featureCollection.features],
                     properties: uuidv1(),
                     features: [...featureCollection.features],
                 },
             ];
+            const fe = [
+                {
+                    "type": "Feature",
+                    "geometry": {
+                        "type": "Point",
+                        "coordinates": [100, 13],
+                    }
+                },
+            ]
+            console.log('fe ', fe)
             return Rx.Observable.of(
                 // changeDrawingStatus('drawOrEdit', 'MultiPolygons', 'mergelyr', featureCollections, drawOptions),
                 addLayer({
@@ -310,7 +324,7 @@ const mergeAsLayerEpic = (action$) =>
                     id: uuidv1(),
                     name: 'MergeLayer',
                     hideLoading: true,
-                    features: featureCollection.features,
+                    features: [...featureCollection.features],
                     visibility: true
                 })
             );
@@ -367,7 +381,8 @@ const defaultState = {
     layerIndex2: -1,
     featuresSelected1: {},
     featuresSelected2: {},
-    loading: false
+    loading: false,
+    error: ''
 }
 
 class MergeLayerComponent extends React.Component {
@@ -380,6 +395,7 @@ class MergeLayerComponent extends React.Component {
         featuresSelected1: PropTypes.object,
         featuresSelected2: PropTypes.object,
         loading: PropTypes.bool,
+        error: PropTypes.string,
 
         onClose: PropTypes.func,
         onDoMerge: PropTypes.func,
@@ -395,6 +411,7 @@ class MergeLayerComponent extends React.Component {
         featuresSelected1: {},
         featuresSelected2: {},
         loading: false,
+        error: '',
 
         onClose: () => { },
         onDoMerge: () => { },
@@ -412,27 +429,29 @@ class MergeLayerComponent extends React.Component {
     onChangeLayer2 = (idx) => {
         this.props.onChangeLayer2(idx)
     };
-    // ดึง featureCollection จาก services
-    onDoMerge = async () => {
-        await this.props.onDoMerge(this.props.layersNode[this.props.layerIndex1], this.props.layersNode[this.props.layerIndex2])
-        // this.onMerge()
-    }
 
-    onAddLayer = (mergedFeatures) => {
-        this.props.onAddLayer(mergedFeatures);
+    // ดึง FeatureCollection จาก services แล้ว Merge จากนั้นก็ Add layer
+    onDoMerge = () => {
+        this.props.onDoMerge(this.props.layersNode[this.props.layerIndex1], this.props.layersNode[this.props.layerIndex2])
     }
 
     // onChangeDrawing = (mergedFeatures) => {
     //     this.props.onChangeDrawing(mergedFeatures)
     // }
 
-    onMerge = () => { // อันนี้ลอง merge จริงๆ แต่ onDoMerge คือแค่ดึง featureCollection จาก services
-        // featureCollection คือตัวช่วยของ truf ที่เอา features 2 array มารวมกัน 'https://turfjs.org/docs/#featureCollection'
-        let mergedFeatures = featureCollection(this.props.featuresSelected1.features.concat(this.props.featuresSelected2.features))
-        console.log('mergedFeatures:', mergedFeatures.features)
-        console.log('allLayers', this.props.allLayers)
-        // this.onChangeDrawing(mergedFeatures)
-        this.onAddLayer(mergedFeatures)
+    // อันนี้เอาไปรวมกับ onDoMerge แล้ว
+    // onMerge = () => {
+    //     // featureCollection คือตัวช่วยของ truf ที่เอา features 2 array มารวมกัน 'https://turfjs.org/docs/#featureCollection'
+    //     let mergedFeatures = featureCollection(this.props.featuresSelected1.features.concat(this.props.featuresSelected2.features))
+    //     console.log('mergedFeatures:', mergedFeatures)
+    //     console.log('allLayers', this.props.allLayers)
+    //     this.onChangeDrawing(mergedFeatures)
+    //     this.onAddLayer(mergedFeatures)
+    // }
+
+    onReset = () => {
+        this.props.onChangeLayer1(-1)
+        this.props.onChangeLayer2(-1)
     }
 
     render() {
@@ -481,48 +500,49 @@ class MergeLayerComponent extends React.Component {
                             </div>
                         }></BorderLayout> */}
                     <br />
-                    {
-                        this.props.loading ?
-                            <button
-                                key="buffer-save"
-                                className="btn btn-longdo-outline-info"
-                                style={{ minWidth: "100px" }}
-                                disabled
-                            >
-                                loading...
-                            </button>
-                            :
-                            <button
-                                key="buffer-save"
-                                // onClick={this?.onSearch}
-                                className="btn btn-longdo-outline-info"
-                                style={{ minWidth: "100px" }}
-                                // id="find-route"
-                                onClick={this.onDoMerge}
-                            >
-                                Save
-                            </button>
-                    }
-
-                    <button
-                        key="clear-routing"
-                        // onClick={this.onClearSearch}
-                        className="btn btn-longdo-outline"
+                    <div
                         style={{
-                            minWidth: "90px",
-                            marginRight: "5px",
-                        }}
-                    >
-                        Cancel
-                    </button>
+                            display: "flex"
+                        }}>
 
-                    <button
-                        className="btn btn-longdo-outline-info"
-                        onClick={this.onMerge}
-                        style={{ minWidth: "100px" }}
-                    >
-                        ADD
-                    </button>
+                        {
+                            this.props.loading ?
+                                <button
+                                    key="buffer-save"
+                                    className="btn btn-longdo-outline-info"
+                                    style={{ minWidth: "100px" }}
+                                    disabled
+                                >
+                                    loading...
+                                </button>
+                                :
+                                <button
+                                    key="buffer-save"
+                                    // onClick={this?.onSearch}
+                                    className="btn btn-longdo-outline-info"
+                                    style={{ minWidth: "100px" }}
+                                    // id="find-route"
+                                    onClick={this.onDoMerge}
+                                >
+                                    Save
+                                </button>
+                        }
+
+                        <button
+                            key="clear-mergelayer"
+                            // onClick={this.onClearSearch}
+                            className="btn btn-longdo-outline"
+                            style={{
+                                minWidth: "90px",
+                                marginRight: "5px",
+                            }}
+                            onClick={this.onReset}
+                        >
+                            Clear
+                        </button>
+
+                        <p style={{color:"red"}}>{this.props.error}</p>
+                    </div>
 
                 </div>
             </Dialog >
@@ -555,7 +575,7 @@ const mergelyr = connect(
         onChangeLayer1: setLayer1,
         onChangeLayer2: setLayer2,
         onDoMerge: doMerge,
-        onAddLayer: MergeAsLayer,
+        onAddLayer: mergeAsLayer,
         onChangeDrawing: changeDrawing
         // onChangeUnit: setUnit,
         // onChangeRadius: setRadius,
@@ -580,7 +600,7 @@ const mergelyr = connect(
 )(MergeLayerComponent);
 
 export default {
-    BufferPlugin: assign(mergelyr, {
+    MergeLayerPlugin: assign(mergelyr, {
         BurgerMenu: {
             name: "mergelyr",
             position: 12,
