@@ -107,6 +107,7 @@ const loadFeature = function (layerSelected1, layerSelected2) {
             dispatch(featureLoaded1(value[0].data))
             dispatch(featureLoaded2(value[1].data))
             dispatch(mergeAsLayer(mergedFeatures))
+            // dispatch(changeDrawing(mergedFeatures))
             dispatch(loading(false))
         }).catch((error) => {
             dispatch(fetchGeoJsonFailure(error))
@@ -280,6 +281,7 @@ const doMergeEpic = (action$, { getState = () => { } }) =>
                 loadFeature(layerSelected1, layerSelected2)
             ]);
         });
+
 // ส่วน epic ที่ต้องการนำ features ที่ merge แล้วเพิ่มใน panel ด้านซ้ายกับวาดลงแผนที่
 const mergeAsLayerEpic = (action$) =>
     action$.ofType(MERGELYR_ADD_AS_LAYER)
@@ -293,7 +295,7 @@ const mergeAsLayerEpic = (action$) =>
                 drawEnabled: false
             };
             console.log('==> mergeAsLayerEpic')
-            // console.log('featuresWantToAddLayer:', featureCollection)
+            console.log('featuresWantToAddLayer:', featureCollection)
             // const layerFeature = convertMeasuresToGeoJSON(features, textLabels, uom, uuidv1());
             // featureCollection.properties = {}
             // featureCollection.style = {}
@@ -302,7 +304,7 @@ const mergeAsLayerEpic = (action$) =>
                     type: "FeatureCollection",
                     newFeature: true,
                     id: uuidv1(),
-                    geometry: [...featureCollection.features],
+                    geometry: null,
                     properties: uuidv1(),
                     features: [...featureCollection.features],
                 },
@@ -324,13 +326,23 @@ const mergeAsLayerEpic = (action$) =>
                     id: uuidv1(),
                     name: 'MergeLayer',
                     hideLoading: true,
+                    // features: [...featureCollection.features],
                     features: [...featureCollection.features],
-                    visibility: true
+                    visibility: true,
+                    style:{
+                        "weight":1,
+                        "radius":7,
+                        "opacity":1,
+                        "fillOpacity":1,
+                        "color":"rgba(255, 0, 0, 1)",
+                        "fillColor":"rgb(123, 123, 255)"
+                      }
                 })
             );
         });
+
 // const changeDrawingEpic = (action$, { getState = () => { } }) =>
-//     action$.ofType('MERGELYR:CHANGE_DRAWING')
+//     action$.ofType(MERGELYR_CHANGE_DRAWING)
 //         .filter(() => {
 //             return (getState().controls.mergelyr || {}).enabled || false;
 //         })
@@ -344,6 +356,15 @@ const mergeAsLayerEpic = (action$) =>
 //                 translateEnabled: false,
 //                 drawEnabled: false
 //             };
+//             const fe = [
+//                 {
+//                     "type": "Feature",
+//                     "geometry": {
+//                         "type": "Point",
+//                         "coordinates": [100, 13],
+//                     }
+//                 },
+//             ]
 //             // const center = getState().map.present.center;
 //             // const radius = getState().nearby.radius
 //             // const centerFixed = getState().nearby.centerFixed
@@ -372,7 +393,7 @@ const mergeAsLayerEpic = (action$) =>
 //             //     },
 //             // ];
 //             return Rx.Observable.from([
-//                 changeDrawingStatus('start', 'Point', 'mergelyr', featureCollection, drawOptions)
+//                 changeDrawingStatus('drawOrEdit', 'MultiPolygons', 'mergelyr', fe, drawOptions)
 //             ]);
 //         });
 
@@ -439,7 +460,7 @@ class MergeLayerComponent extends React.Component {
     //     this.props.onChangeDrawing(mergedFeatures)
     // }
 
-    // อันนี้เอาไปรวมกับ onDoMerge แล้ว
+    /* อันนี้เอาไปรวมกับ onDoMerge แล้ว */
     // onMerge = () => {
     //     // featureCollection คือตัวช่วยของ truf ที่เอา features 2 array มารวมกัน 'https://turfjs.org/docs/#featureCollection'
     //     let mergedFeatures = featureCollection(this.props.featuresSelected1.features.concat(this.props.featuresSelected2.features))

@@ -186,9 +186,9 @@ const loadFeature = function (layerSelected, radius, uom) {
         })
         getFeature.then((value) => {
             let featureGeoJson = value.data
-            console.log('featureGeoJson: ', featureGeoJson)
+            console.log('featureGeoJson(189): ', featureGeoJson)
             let bufferedLayer = turfBuffer(featureGeoJson, radius, { units: uom });
-            console.log('bufferedLayer: ', bufferedLayer)
+            console.log('bufferedLayer(191): ', bufferedLayer)
             dispatch(addAsLayer(bufferedLayer))
             dispatch(loading(false))
         })
@@ -285,7 +285,7 @@ const addAsLayerEpic = (action$) =>
                     id: uuidv1(),
                     name: 'BufferedLayer',
                     hideLoading: true,
-                    features: bufferedFtCollection.features,
+                    features: [...bufferedFtCollection.features],
                     visibility: true
                 })
             );
