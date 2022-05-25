@@ -5,7 +5,7 @@ import assign from 'object-assign';
 import { get } from 'lodash';
 import { find } from 'lodash';
 import axios from '../../libs/ajax';
-import Rx from 'rxjs'
+import Rx from 'rxjs';
 import uuidv1 from 'uuid/v1';
 import { featureCollection } from '@turf/helpers'
 
@@ -25,7 +25,7 @@ createControlEnabledSelector("mergelyr");
 
 const mergeLyrState = (state) => get(state, 'controls.mergelyr.enabled')
 
-const toggleBufferTool = toggleControl.bind(null, "mergelyr", null);
+const toggleMergeLyrTool = toggleControl.bind(null, "mergelyr", null);
 
 const layerNodesExtracter = (groups) => {
     const layerNode = []
@@ -68,7 +68,6 @@ const loadFeature = function (layerSelected1, layerSelected2) {
                 })
             resolve(getFromAPI);
         })
-        getFeature1.then(value => console.log('value.data', value.data))
         // axios.get(`${layerSelected1.url || DEFAULT_API}`, {
         //     params: {
         //         service: 'WFS',
@@ -326,7 +325,6 @@ const mergeAsLayerEpic = (action$) =>
                     id: uuidv1(),
                     name: 'MergeLayer',
                     hideLoading: true,
-                    // features: [...featureCollection.features],
                     features: [...featureCollection.features],
                     visibility: true,
                     style:{
@@ -335,7 +333,7 @@ const mergeAsLayerEpic = (action$) =>
                         "opacity":1,
                         "fillOpacity":1,
                         "color":"rgba(255, 0, 0, 1)",
-                        "fillColor":"rgb(123, 123, 255)"
+                        "fillColor":"rgb(4, 4, 250)"
                       }
                 })
             );
@@ -435,8 +433,11 @@ class MergeLayerComponent extends React.Component {
         error: '',
 
         onClose: () => { },
+        onChangeLayer1: () => {},
+        onChangeLayer2: () => {},
         onDoMerge: () => { },
-        onMerge: () => { },
+        // onMerge: () => { },
+        onReset: () => {}
     }
 
     onClose = () => {
@@ -592,16 +593,12 @@ const mergelyr = connect(
         }
     ),
     {
-        onClose: toggleBufferTool,
+        onClose: toggleMergeLyrTool,
         onChangeLayer1: setLayer1,
         onChangeLayer2: setLayer2,
         onDoMerge: doMerge,
-        onAddLayer: mergeAsLayer,
-        onChangeDrawing: changeDrawing
-        // onChangeUnit: setUnit,
-        // onChangeRadius: setRadius,
-        // onDoBuffer: doBuffer,
-        // onAddAsLayer: addAsLayer
+        // onChangeDrawing: changeDrawing
+
         // onDisplaySetting: displaySetting,
         // onAddPoint: addPoint,
         // onSwapPoint: swapPoint,

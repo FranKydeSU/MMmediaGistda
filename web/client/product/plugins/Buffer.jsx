@@ -10,6 +10,8 @@ import turfBuffer from '@turf/buffer'
 import Rx from 'rxjs';
 import axios from '../../libs/ajax';
 import { addLayer } from '../../actions/layers'
+import { featureCollection } from '@turf/helpers'
+import uuidv1 from 'uuid/v1';
 
 // import DockablePanel from '../../components/misc/DockablePanel';
 import Dialog from '../../components/misc/Dialog';
@@ -65,17 +67,15 @@ const setUnit = function (unit) {
     }
 }
 
-const doBuffer = function (layerSelected, radius, unit) {
+const doBuffer = function (layerSelected) {
     return {
         type: BUFFER_DO_BUFFER,
         layerSelected,
-        radius,
-        unit
     }
 }
 
 const addAsLayer = function (bufferedFtCollection) {
-    console.log('action bufferedFeatures => ', bufferedFtCollection)
+    console.log('addAsLayer Action', bufferedFtCollection)
     return {
         type: BUFFER_ADD_AS_LAYER,
         bufferedFtCollection
@@ -161,14 +161,14 @@ function bufferReducer(state = defaultState, action) {
     }
 }
 
-const loadFeature = function (layerSelected, radius, uom) {
+const loadFeature = function (layerSelected) {
     if (!layerSelected) {
         return (dispatch) => {
             dispatch(fetchGeoJsonFailure('Please select layers.'))
         }
     }
     const DEFAULT_API = 'https://geonode.longdo.com/geoserver/wfs';
-    return (dispatch) => {
+    return (dispatch, getState) => {
         dispatch(loading(true))
         dispatch(fetchGeoJsonFailure(''))
         let getFeature = new Promise((resolve, reject) => {
@@ -185,11 +185,14 @@ const loadFeature = function (layerSelected, radius, uom) {
             resolve(getFromAPI)
         })
         getFeature.then((value) => {
-            let featureGeoJson = value.data
-            console.log('featureGeoJson(189): ', featureGeoJson)
-            let bufferedLayer = turfBuffer(featureGeoJson, radius, { units: uom });
-            console.log('bufferedLayer(191): ', bufferedLayer)
+            let featureGeoJson = featureCollection(value.data.features)
+            console.log('featureGeoJson(187): ', featureGeoJson)
+            let bufferedLayer = turfBuffer(featureGeoJson, getState().buffer.radius, { units: getState().buffer.uom });
+            console.log('bufferedLayer(189): ', bufferedLayer)
             dispatch(addAsLayer(bufferedLayer))
+            dispatch(loading(false))
+        }).catch((error) => {
+            dispatch(fetchGeoJsonFailure(error))
             dispatch(loading(false))
         })
 
@@ -269,13 +272,16 @@ const doBufferEpic = (action$, { getState = () => { } }) =>
             // ).geometry;
             // const feature = featureRadius(radius, geometry)
             return Rx.Observable.from([
-                loadFeature(layerSelected, getState().buffer.radius, getState().buffer.unitValue)
+                loadFeature(layerSelected)
             ]);
         });
 
 // ส่วน Add_As_Layer ที่ยังไม่สมบูรณ์
 const addAsLayerEpic = (action$) =>
     action$.ofType(BUFFER_ADD_AS_LAYER)
+        .filter(() => {
+            return (getState().controls.buffer || {}).enabled || false;
+        })
         .switchMap(({ bufferedFtCollection }) => {
             console.log('==> addAsLayerEpic')
             console.log('bufferedLayer in epic:', bufferedFtCollection)
@@ -286,7 +292,15 @@ const addAsLayerEpic = (action$) =>
                     name: 'BufferedLayer',
                     hideLoading: true,
                     features: [...bufferedFtCollection.features],
-                    visibility: true
+                    visibility: true,
+                    style: {
+                        "weight": 1,
+                        "radius": 7,
+                        "opacity": 1,
+                        "fillOpacity": 1,
+                        "color": "rgba(255, 0, 0, 1)",
+                        "fillColor": "rgb(4, 4, 250)"
+                    }
                 })
             );
         });
@@ -316,7 +330,6 @@ class BufferDialog extends React.Component {
         onChangeLayer: PropTypes.func,
         onChangeUnit: PropTypes.func,
         onDoBuffer: PropTypes.func,
-        onAddAsLayer: PropTypes.func,
     }
 
     static defaultProps = {
@@ -336,7 +349,7 @@ class BufferDialog extends React.Component {
         onChangeLayer: () => { },
         onChangeUnit: () => { },
         onDoBuffer: () => { },
-        onAddAsLayer: () => { }, // อาจแก้ Epic เพราะของ measurement แปลงเป็น GeoJSON ก่อน add ต้องแก่เป็นของ buffer
+
     };
 
     onClose = () => {
@@ -350,7 +363,7 @@ class BufferDialog extends React.Component {
     onDoBuffer = () => {
         console.log('radius:', this.props.radius)
         console.log('unit:', this.props.unitValue)
-        this.props.onDoBuffer(this.props.layersNode[this.props.layerIndex], this.props.radius, this.props.unitValue)
+        this.props.onDoBuffer(this.props.layersNode[this.props.layerIndex])
     }
 
     onChangeUnit = (unit) => {
@@ -359,12 +372,6 @@ class BufferDialog extends React.Component {
 
     onChangeRadius = (radius) => {
         this.props.onChangeRadius(Number(radius))
-    }
-
-    onAddAsLayer = () => {
-        console.log('-=onAddAsLayer=-');
-        console.log('bufferedFeatures:', this.props.bufferedFeatures)
-        this.props.onAddAsLayer(this.props.bufferedFeatures)
     }
 
     onReset = () => {
@@ -519,7 +526,7 @@ const buffer = connect(
         onChangeUnit: setUnit,
         onChangeRadius: setRadius,
         onDoBuffer: doBuffer,
-        onAddAsLayer: addAsLayer
+
         // onDisplaySetting: displaySetting,
         // onAddPoint: addPoint,
         // onSwapPoint: swapPoint,
