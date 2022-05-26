@@ -171,88 +171,112 @@ const loadFeature = function (layerSelected) {
     return (dispatch, getState) => {
         dispatch(loading(true))
         dispatch(fetchGeoJsonFailure(''))
-        let getFeature = new Promise((resolve, reject) => {
-            let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`,
-                {
-                    params: {
-                        service: 'WFS',
-                        version: layerSelected.version,
-                        request: 'GetFeature',
-                        typeName: layerSelected.name,
-                        outputFormat: 'application/json'
-                    }
-                })
-            resolve(getFromAPI)
-        })
-        getFeature.then((value) => {
-            let featureGeoJson = featureCollection(value.data.features)
-            console.log('featureGeoJson(187): ', featureGeoJson)
-            let bufferedLayer = turfBuffer(featureGeoJson, getState().buffer.radius, { units: getState().buffer.uom });
-            console.log('bufferedLayer(189): ', bufferedLayer)
-            dispatch(addAsLayer(bufferedLayer))
-            dispatch(loading(false))
-        }).catch((error) => {
-            dispatch(fetchGeoJsonFailure(error))
-            dispatch(loading(false))
-        })
+        if (layerSelected.features) {
+            console.log('Enter IF layerSelected.features', layerSelected)
+            new Promise((resolve, reject) => {
+                let ftCollection = featureCollection(layerSelected.features)
+                console.log('featureCollection', ftCollection)
+                let result = turfBuffer(ftCollection, getState().buffer.radius, { units: getState().buffer.unitValue });
+                resolve(result)
+            }).then(bufferedFeatures => {
+                console.log('bufferedLayer after Promise in if: ', bufferedFeatures)
+                dispatch(addAsLayer(bufferedFeatures))
+                dispatch(setLayer(-1))
+                dispatch(loading(false))
+            })
+        } else {
+            let getFeature = new Promise((resolve, reject) => {
+                let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`,
+                    {
+                        params: {
+                            service: 'WFS',
+                            version: layerSelected.version,
+                            request: 'GetFeature',
+                            typeName: layerSelected.name,
+                            outputFormat: 'application/json'
+                        }
+                    })
+                resolve(getFromAPI)
+            })
 
-        // axios.get(`${layerSelected.url || DEFAULT_API}`, {
-        //     params: {
-        //         service: 'WFS',
-        //         version: layerSelected.version,
-        //         request: 'GetFeature',
-        //         typeName: layerSelected.name,
-        //         outputFormat: 'application/json'
-        //     }
-        // }).then(({ data }) => {
-        //     console.log('- Can get featureLayer -')
-        //     let featureLayer = data
-        //     console.log('featureLayer: ', featureLayer)
-        //     let bufferedLayer = turfBuffer(featureLayer, radius, { units: uom });
-        //     console.log('bufferedLayer: ', bufferedLayer)
-        //     dispatch(featureLoaded(featureLayer, bufferedLayer))
-        //         try {
-        //             const layerType = layerInfo.properties.find((layerType) => { return layerType.localType === 'Point' })
-        //             if (layerType.name !== null || layerType.name !== 'undefined') {
-        //                 const positionPoint = center.y + ' ' + center.x
-        //                 axios.get(`${layerSelected.url || DEFAULT_API}`, {
-        //                     params: {
-        //                         service: 'WFS',
-        //                         version: layerSelected.version,
-        //                         request: 'GetFeature',
-        //                         typeNames: layerSelected.name,
-        //                         outputFormat: 'application/json',
-        //                         SRSName: 'EPSG:4326',
-        //                         cql_filter: `DWithin(${layerType.name},POINT(${positionPoint}),${radius},meters)`
-        //                     }
-        //                 }).then((response) => {
-        //                     console.log(response.data)
-        //                     var featuresGeoJson = response.data.features
-        //                     featuresGeoJson.map((geoJson) => {
-        //                         if (geoJson.geometry.type === 'Point') {
-        //                             geoJson['style'] = {
-        //                                 iconGlyph: "map-marker",
-        //                                 iconShape: "circle",
-        //                                 iconColor: "blue",
-        //                                 highlight: false,
-        //                                 id: uuidv1()
-        //                             }
-        //                         }
-        //                     })
-        //                     featuresGeoJson.push(radiusFeature)
-        //                     dispatch(featureLoaded(featuresGeoJson));
-        //                 })
-        //             }
-        //         } catch (error) {
-        //             console.log(error)
-        //             dispatch(featureLoaded([]));
-        //         }
-        //         }).catch((e) => {
-        //             console.log(e);
-        //             // dispatch(featureLoaded([]));
-        //         });
+            getFeature.then((value) => {
+                let featureGeoJson = value.data
+                console.log('featureGeoJson: ', featureGeoJson)
+                new Promise((resolve, reject) => {
+                    console.log('getState().buffer.radius', getState().buffer.radius)
+                    console.log('getState().buffer.unitValue', getState().buffer.unitValue)
+                    let result = turfBuffer(featureGeoJson, getState().buffer.radius, { units: getState().buffer.unitValue });
+                    resolve(result)
+                }).then(bufferedFeatures => {
+                    console.log('bufferedLayer after Promise: ', bufferedFeatures)
+                    dispatch(featureLoaded(featureGeoJson, bufferedFeatures))
+                    dispatch(addAsLayer(bufferedFeatures))
+                    dispatch(setLayer(-1))
+                    dispatch(loading(false))
+                }).catch(()=>{
+                    dispatch(loading(false))
+                    dispatch(fetchGeoJsonFailure('error'))
+                })
+            })
+
+            // axios.get(`${layerSelected.url || DEFAULT_API}`, {
+            //     params: {
+            //         service: 'WFS',
+            //         version: layerSelected.version,
+            //         request: 'GetFeature',
+            //         typeName: layerSelected.name,
+            //         outputFormat: 'application/json'
+            //     }
+            // }).then(({ data }) => {
+            //     console.log('- Can get featureLayer -')
+            //     let featureLayer = data
+            //     console.log('featureLayer: ', featureLayer)
+            //     let bufferedLayer = turfBuffer(featureLayer, radius, { units: uom });
+            //     console.log('bufferedLayer: ', bufferedLayer)
+            //     dispatch(featureLoaded(featureLayer, bufferedLayer))
+            //         try {
+            //             const layerType = layerInfo.properties.find((layerType) => { return layerType.localType === 'Point' })
+            //             if (layerType.name !== null || layerType.name !== 'undefined') {
+            //                 const positionPoint = center.y + ' ' + center.x
+            //                 axios.get(`${layerSelected.url || DEFAULT_API}`, {
+            //                     params: {
+            //                         service: 'WFS',
+            //                         version: layerSelected.version,
+            //                         request: 'GetFeature',
+            //                         typeNames: layerSelected.name,
+            //                         outputFormat: 'application/json',
+            //                         SRSName: 'EPSG:4326',
+            //                         cql_filter: `DWithin(${layerType.name},POINT(${positionPoint}),${radius},meters)`
+            //                     }
+            //                 }).then((response) => {
+            //                     console.log(response.data)
+            //                     var featuresGeoJson = response.data.features
+            //                     featuresGeoJson.map((geoJson) => {
+            //                         if (geoJson.geometry.type === 'Point') {
+            //                             geoJson['style'] = {
+            //                                 iconGlyph: "map-marker",
+            //                                 iconShape: "circle",
+            //                                 iconColor: "blue",
+            //                                 highlight: false,
+            //                                 id: uuidv1()
+            //                             }
+            //                         }
+            //                     })
+            //                     featuresGeoJson.push(radiusFeature)
+            //                     dispatch(featureLoaded(featuresGeoJson));
+            //                 })
+            //             }
+            //         } catch (error) {
+            //             console.log(error)
+            //             dispatch(featureLoaded([]));
+            //         }
+            //         }).catch((e) => {
+            //             console.log(e);
+            //             // dispatch(featureLoaded([]));
+            //         });
+        }
     };
-};
+}
 
 const doBufferEpic = (action$, { getState = () => { } }) =>
     action$.ofType(BUFFER_DO_BUFFER)
@@ -277,11 +301,8 @@ const doBufferEpic = (action$, { getState = () => { } }) =>
         });
 
 // ส่วน Add_As_Layer ที่ยังไม่สมบูรณ์
-const addAsLayerEpic = (action$) =>
+const addAsBufferedLayerEpic = (action$) =>
     action$.ofType(BUFFER_ADD_AS_LAYER)
-        .filter(() => {
-            return (getState().controls.buffer || {}).enabled || false;
-        })
         .switchMap(({ bufferedFtCollection }) => {
             console.log('==> addAsLayerEpic')
             console.log('bufferedLayer in epic:', bufferedFtCollection)
@@ -300,7 +321,8 @@ const addAsLayerEpic = (action$) =>
                         "fillOpacity": 1,
                         "color": "rgba(255, 0, 0, 1)",
                         "fillColor": "rgb(4, 4, 250)"
-                    }
+                    },
+                    title: 'BufferedLayer'
                 })
             );
         });
@@ -563,6 +585,6 @@ export default {
     },
     epics: {
         doBufferEpic,
-        addAsLayerEpic
+        addAsBufferedLayerEpic
     },
 };

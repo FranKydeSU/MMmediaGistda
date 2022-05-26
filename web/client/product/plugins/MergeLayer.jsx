@@ -55,84 +55,100 @@ const loadFeature = function (layerSelected1, layerSelected2) {
     return (dispatch, getState) => {
         dispatch(loading(true))
         dispatch(fetchGeoJsonFailure(''))
-        let getFeature1 = new Promise((resolve, reject) => {
-            let getFromAPI = axios.get(`${layerSelected1.url || DEFAULT_API}`,
-                {
-                    params: {
-                        service: 'WFS',
-                        version: layerSelected1.version,
-                        request: 'GetFeature',
-                        typeName: layerSelected1.name,
-                        outputFormat: 'application/json'
-                    }
-                })
-            resolve(getFromAPI);
-        })
-        // axios.get(`${layerSelected1.url || DEFAULT_API}`, {
-        //     params: {
-        //         service: 'WFS',
-        //         version: layerSelected1.version,
-        //         request: 'GetFeature',
-        //         typeName: layerSelected1.name,
-        //         outputFormat: 'application/json'
-        //     }
-        // }).then(({ data }) => {
-        //     console.log('==CanGetLayerFeatures==')
-        //     let featureLayer1 = data
-        //     console.log('featureLayer1: ', featureLayer1)
-        //     dispatch(featureLoaded1(featureLayer1))
-        // }).catch((e) => {
-        //     console.log(e);
-        //     dispatch(featureLoaded1([]));
-        //     dispatch(loading(false))
-        // });
-        let getFeature2 = new Promise((resolve, reject) => {
-            let getFromAPI = axios.get(`${layerSelected2.url || DEFAULT_API}`,
-                {
-                    params: {
-                        service: 'WFS',
-                        version: layerSelected2.version,
-                        request: 'GetFeature',
-                        typeName: layerSelected2.name,
-                        outputFormat: 'application/json'
-                    }
-                })
-            resolve(getFromAPI);
-        })
-
-        Promise.all([getFeature1, getFeature2]).then(value => {
-            let mergedFeatures = featureCollection(value[0].data.features.concat(value[1].data.features))
-            console.log('mergedFeatures:', mergedFeatures)
-            dispatch(featureLoaded1(value[0].data))
-            dispatch(featureLoaded2(value[1].data))
+        if (layerSelected1.features && layerSelected2.features) {
+            console.log('Enter IF')
+            let mergedFeatures = featureCollection(layerSelected1.features.concat(layerSelected2.features))
+            console.log('mergedLyr if both have layer: ', mergedFeatures)
             dispatch(mergeAsLayer(mergedFeatures))
-            // dispatch(changeDrawing(mergedFeatures))
-            dispatch(loading(false))
-        }).catch((error) => {
-            dispatch(fetchGeoJsonFailure(error))
-            dispatch(loading(false))
-        })
-        // axios.get(`${layerSelected2.url || DEFAULT_API}`, {
-        //     params: {
-        //         service: 'WFS',
-        //         version: layerSelected2.version,
-        //         request: 'GetFeature',
-        //         typeName: layerSelected2.name,
-        //         outputFormat: 'application/json'
-        //     }
-        // }).then(({ data }) => {
-        //     let featureLayer2 = data
-        //     console.log('featureLayer2: ', featureLayer2)
-        //     dispatch(featureLoaded2(featureLayer2))
-        //     dispatch(loading(false))
-        // }).catch((e) => {
-        //     console.log(e);
-        //     dispatch(featureLoaded2([]));
-        //     dispatch(loading(false))
-        // });
-        // let mergedFeatures = featureCollection(this.props.featuresSelected1.features.concat(this.props.featuresSelected2.features))
-        // console.log('mergedFeatures:', mergedFeatures)
-        // console.log('allLayers', this.props.allLayers)
+        } else if (!layerSelected1.features && layerSelected2.features) {
+            console.log('Enter IF lry1 dont have layer')
+            let getFeature1 = new Promise((resolve, reject) => {
+                let getFromAPI = axios.get(`${layerSelected1.url || DEFAULT_API}`,
+                    {
+                        params: {
+                            service: 'WFS',
+                            version: layerSelected1.version,
+                            request: 'GetFeature',
+                            typeName: layerSelected1.name,
+                            outputFormat: 'application/json'
+                        }
+                    })
+                resolve(getFromAPI);
+                reject((dispatch) => { dispatch(fetchGeoJsonFailure('error')) })
+            })
+            getFeature1.then(featuresColl => {
+                console.log('featuresColl.data', featuresColl.data)
+                let mergedFeatures = featureCollection(featuresColl.data.features.concat(layerSelected2.features))
+                console.log('mergedLyr if lry1 dont have layer: ', mergedFeatures)
+                dispatch(mergeAsLayer(mergedFeatures))
+            })
+        } else if (layerSelected1.features && !layerSelected2.features) {
+            console.log('Enter IF lry2 dont have layer')
+            let getFeature2 = new Promise((resolve, reject) => {
+                let getFromAPI = axios.get(`${layerSelected2.url || DEFAULT_API}`,
+                    {
+                        params: {
+                            service: 'WFS',
+                            version: layerSelected2.version,
+                            request: 'GetFeature',
+                            typeName: layerSelected2.name,
+                            outputFormat: 'application/json'
+                        }
+                    })
+                resolve(getFromAPI);
+                reject((dispatch) => { dispatch(fetchGeoJsonFailure('Error')) })
+            })
+            getFeature2.then(featuresColl => {
+                console.log('featuresColl.data', featuresColl.data)
+                let mergedFeatures = featureCollection(layerSelected1.features.concat(featuresColl.data.features))
+                console.log('mergedLyr if lry2 dont have layer: ', mergedFeatures)
+                dispatch(mergeAsLayer(mergedFeatures))
+            })
+        } else {
+            let getFeature1 = new Promise((resolve, reject) => {
+                let getFromAPI = axios.get(`${layerSelected1.url || DEFAULT_API}`,
+                    {
+                        params: {
+                            service: 'WFS',
+                            version: layerSelected1.version,
+                            request: 'GetFeature',
+                            typeName: layerSelected1.name,
+                            outputFormat: 'application/json'
+                        }
+                    })
+                resolve(getFromAPI);
+                reject((dispatch) => { dispatch(fetchGeoJsonFailure('error')) })
+            })
+            let getFeature2 = new Promise((resolve, reject) => {
+                let getFromAPI = axios.get(`${layerSelected2.url || DEFAULT_API}`,
+                    {
+                        params: {
+                            service: 'WFS',
+                            version: layerSelected2.version,
+                            request: 'GetFeature',
+                            typeName: layerSelected2.name,
+                            outputFormat: 'application/json'
+                        }
+                    })
+                resolve(getFromAPI);
+                reject((dispatch) => { dispatch(fetchGeoJsonFailure('Error')) })
+            })
+            console.log('Enter IF both dont have layer')
+            Promise.all([getFeature1, getFeature2]).then(value => {
+                let mergedFeatures = featureCollection(value[0].data.features.concat(value[1].data.features))
+                console.log('mergedFeatures:', mergedFeatures)
+                dispatch(featureLoaded1(value[0].data))
+                dispatch(featureLoaded2(value[1].data))
+                dispatch(mergeAsLayer(mergedFeatures))
+                // dispatch(changeDrawing(mergedFeatures))
+            }).catch((error) => {
+                dispatch(fetchGeoJsonFailure('error'))
+                dispatch(loading(false))
+            })
+        }
+        dispatch(setLayer1(-1)) // แก้ให้อยู่ใน promise
+        dispatch(setLayer2(-1))
+        dispatch(loading(false))
     };
 };
 
@@ -327,14 +343,15 @@ const mergeAsLayerEpic = (action$) =>
                     hideLoading: true,
                     features: [...featureCollection.features],
                     visibility: true,
-                    style:{
-                        "weight":1,
-                        "radius":7,
-                        "opacity":1,
-                        "fillOpacity":1,
-                        "color":"rgba(255, 0, 0, 1)",
-                        "fillColor":"rgb(4, 4, 250)"
-                      }
+                    style: {
+                        "weight": 1,
+                        "radius": 7,
+                        "opacity": 1,
+                        "fillOpacity": 1,
+                        "color": "rgba(255, 0, 0, 1)",
+                        "fillColor": "rgb(4, 4, 250)"
+                    },
+                    title: 'MergeLayer'
                 })
             );
         });
@@ -418,7 +435,9 @@ class MergeLayerComponent extends React.Component {
 
         onClose: PropTypes.func,
         onDoMerge: PropTypes.func,
-        onMerge: PropTypes.func,
+        onChangeLayer1: PropTypes.func,
+        onChangeLayer2: PropTypes.func,
+        onReset: PropTypes.func,
     }
 
     static defaultProps = {
@@ -433,11 +452,10 @@ class MergeLayerComponent extends React.Component {
         error: '',
 
         onClose: () => { },
-        onChangeLayer1: () => {},
-        onChangeLayer2: () => {},
         onDoMerge: () => { },
-        // onMerge: () => { },
-        onReset: () => {}
+        onChangeLayer1: () => { },
+        onChangeLayer2: () => { },
+        onReset: () => { }
     }
 
     onClose = () => {
@@ -475,6 +493,19 @@ class MergeLayerComponent extends React.Component {
         this.props.onChangeLayer1(-1)
         this.props.onChangeLayer2(-1)
     }
+
+    onExportData = () => {
+        let mergeFt = featureCollection(this.props.featuresSelected1.features.concat(this.props.featuresSelected2.features))
+        console.log('mergeFt', mergeFt)
+        const jsonString = `data:text/json;chatset=utf-8,${encodeURIComponent(
+            JSON.stringify(mergeFt)
+        )}`;
+        const link = document.createElement("a");
+        link.href = jsonString;
+        link.download = "data.json";
+
+        link.click();
+    };
 
     render() {
         return this.props.show ? (
@@ -552,7 +583,6 @@ class MergeLayerComponent extends React.Component {
 
                         <button
                             key="clear-mergelayer"
-                            // onClick={this.onClearSearch}
                             className="btn btn-longdo-outline"
                             style={{
                                 minWidth: "90px",
@@ -563,7 +593,18 @@ class MergeLayerComponent extends React.Component {
                             Clear
                         </button>
 
-                        <p style={{color:"red"}}>{this.props.error}</p>
+                        <button
+                            className="btn btn-longdo-outline"
+                            style={{
+                                minWidth: "90px",
+                                marginRight: "5px",
+                            }}
+                            onClick={this.onExportData}
+                        >
+                            Export
+                        </button>
+
+                        <p style={{ color: "red" }}>{this.props.error}</p>
                     </div>
 
                 </div>

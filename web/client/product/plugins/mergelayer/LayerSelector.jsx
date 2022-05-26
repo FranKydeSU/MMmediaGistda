@@ -23,7 +23,7 @@ const LayerSelector = ({ responses, index,setIndex}) => {
         if (!isEmpty(responses)) {
             // responses.reverse()
             setOptions(responses.map((opt, idx)=> {
-                const value = opt?.title;
+                const value = opt?.title || opt?.name;
                 // Display only valid responses in the drop down
                 return {label: value, value, idx, style: {display: 'block'}};
             }));
@@ -31,7 +31,7 @@ const LayerSelector = ({ responses, index,setIndex}) => {
     }, [responses]);
 
     useEffect(()=>{
-        setTitle(responses[index]?.title || "");
+        setTitle(responses[index]?.title || responses[index]?.name || "");
     }, [responses, index]);
 
     const onChange = (event) => {
