@@ -67,7 +67,6 @@ const loadFeature = function (layerSelected1, layerSelected2) {
                     }
                 })
             resolve(getFromAPI);
-            reject((dispatch)=>{dispatch(fetchGeoJsonFailure('Error'))})
         })
         // axios.get(`${layerSelected1.url || DEFAULT_API}`, {
         //     params: {
@@ -99,7 +98,6 @@ const loadFeature = function (layerSelected1, layerSelected2) {
                     }
                 })
             resolve(getFromAPI);
-            reject((dispatch)=>{dispatch(fetchGeoJsonFailure('Error'))})
         })
 
         Promise.all([getFeature1, getFeature2]).then(value => {
@@ -109,11 +107,9 @@ const loadFeature = function (layerSelected1, layerSelected2) {
             dispatch(featureLoaded2(value[1].data))
             dispatch(mergeAsLayer(mergedFeatures))
             // dispatch(changeDrawing(mergedFeatures))
-            dispatch(setLayer1(-1))
-            dispatch(setLayer2(-1))
             dispatch(loading(false))
         }).catch((error) => {
-            dispatch(fetchGeoJsonFailure('error'))
+            dispatch(fetchGeoJsonFailure(error))
             dispatch(loading(false))
         })
         // axios.get(`${layerSelected2.url || DEFAULT_API}`, {
@@ -331,15 +327,14 @@ const mergeAsLayerEpic = (action$) =>
                     hideLoading: true,
                     features: [...featureCollection.features],
                     visibility: true,
-                    style: {
-                        "weight": 1,
-                        "radius": 7,
-                        "opacity": 1,
-                        "fillOpacity": 1,
-                        "color": "rgba(255, 0, 0, 1)",
-                        "fillColor": "rgb(4, 4, 250)"
-                    },
-                    title: 'MergeLayer'
+                    style:{
+                        "weight":1,
+                        "radius":7,
+                        "opacity":1,
+                        "fillOpacity":1,
+                        "color":"rgba(255, 0, 0, 1)",
+                        "fillColor":"rgb(4, 4, 250)"
+                      }
                 })
             );
         });
@@ -438,11 +433,11 @@ class MergeLayerComponent extends React.Component {
         error: '',
 
         onClose: () => { },
-        onChangeLayer1: () => { },
-        onChangeLayer2: () => { },
+        onChangeLayer1: () => {},
+        onChangeLayer2: () => {},
         onDoMerge: () => { },
         // onMerge: () => { },
-        onReset: () => { }
+        onReset: () => {}
     }
 
     onClose = () => {
@@ -480,22 +475,6 @@ class MergeLayerComponent extends React.Component {
         this.props.onChangeLayer1(-1)
         this.props.onChangeLayer2(-1)
     }
-
-
-    onExportData = () => {
-        let mergeFt = featureCollection(this.props.featuresSelected1.features.concat(this.props.featuresSelected2.features))
-        console.log('mergeFt',mergeFt)
-        const jsonString = `data:text/json;chatset=utf-8,${encodeURIComponent(
-          JSON.stringify(mergeFt)
-        )}`;
-        const link = document.createElement("a");
-        link.href = jsonString;
-        link.download = "data.json";
-    
-        link.click();
-      };
-
-
 
     render() {
         return this.props.show ? (
@@ -573,6 +552,7 @@ class MergeLayerComponent extends React.Component {
 
                         <button
                             key="clear-mergelayer"
+                            // onClick={this.onClearSearch}
                             className="btn btn-longdo-outline"
                             style={{
                                 minWidth: "90px",
@@ -583,18 +563,7 @@ class MergeLayerComponent extends React.Component {
                             Clear
                         </button>
 
-                        <button
-                            className="btn btn-longdo-outline"
-                            style={{
-                                minWidth: "90px",
-                                marginRight: "5px",
-                            }}
-                            onClick={this.onExportData}
-                        >
-                            Export
-                        </button>
-
-                        <p style={{ color: "red" }}>{this.props.error}</p>
+                        <p style={{color:"red"}}>{this.props.error}</p>
                     </div>
 
                 </div>

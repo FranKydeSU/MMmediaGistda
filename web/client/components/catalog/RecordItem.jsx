@@ -185,7 +185,6 @@ class RecordItem extends React.Component {
                     onClick={() => {
                         const layer = this.makeLayer(type, wms || wmts, this.getFormats(type, record));
                         if (layer) {
-                            console.log('layer, record',layer, record)
                             this.addLayer(layer, {record});
                         }
                     }}
