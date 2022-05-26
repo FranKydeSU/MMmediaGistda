@@ -171,30 +171,52 @@ const loadFeature = function (layerSelected) {
     return (dispatch, getState) => {
         dispatch(loading(true))
         dispatch(fetchGeoJsonFailure(''))
-        let getFeature = new Promise((resolve, reject) => {
-            let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`,
-                {
-                    params: {
-                        service: 'WFS',
-                        version: layerSelected.version,
-                        request: 'GetFeature',
-                        typeName: layerSelected.name,
-                        outputFormat: 'application/json'
-                    }
+        if (layerSelected.features) {
+            console.log('Enter IF layerSelected.features', layerSelected)
+            new Promise((resolve, reject) => {
+                let ftCollection = featureCollection(layerSelected.features)
+                console.log('featureCollection', ftCollection)
+                let result = turfBuffer(ftCollection, getState().buffer.radius, { units: getState().buffer.unitValue });
+                resolve(result)
+            }).then(bufferedFeatures => {
+                console.log('bufferedLayer after Promise in if: ', bufferedFeatures)
+                dispatch(addAsLayer(bufferedFeatures))
+            })
+        } else {
+            let getFeature = new Promise((resolve, reject) => {
+                let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`,
+                    {
+                        params: {
+                            service: 'WFS',
+                            version: layerSelected.version,
+                            request: 'GetFeature',
+                            typeName: layerSelected.name,
+                            outputFormat: 'application/json'
+                        }
+                    })
+                resolve(getFromAPI)
+            })
+    
+            getFeature.then((value) => {
+                let featureGeoJson = value.data
+                console.log('featureGeoJson: ', featureGeoJson)
+                new Promise((resolve, reject) => {
+                    console.log('getState().buffer.radius',getState().buffer.radius)
+                    console.log('getState().buffer.unitValue',getState().buffer.unitValue)
+                    let result = turfBuffer(featureGeoJson, getState().buffer.radius, { units: getState().buffer.unitValue });
+                    resolve(result)
+                }).then(bufferedFeatures => {
+                    console.log('bufferedLayer after Promise: ', bufferedFeatures)
+                    dispatch(featureLoaded(featureGeoJson, bufferedFeatures))
+                    dispatch(addAsLayer(bufferedFeatures))
                 })
-            resolve(getFromAPI)
-        })
-        getFeature.then((value) => {
-            let featureGeoJson = featureCollection(value.data.features)
-            console.log('featureGeoJson(187): ', featureGeoJson)
-            let bufferedLayer = turfBuffer(featureGeoJson, getState().buffer.radius, { units: getState().buffer.uom });
-            console.log('bufferedLayer(189): ', bufferedLayer)
-            dispatch(addAsLayer(bufferedLayer))
-            dispatch(loading(false))
-        }).catch((error) => {
-            dispatch(fetchGeoJsonFailure(error))
-            dispatch(loading(false))
-        })
+                dispatch(setLayer(-1))
+                dispatch(loading(false))
+            }).catch((error) => {
+                dispatch(fetchGeoJsonFailure('error'))
+                dispatch(loading(false))
+            })
+        }
 
         // axios.get(`${layerSelected.url || DEFAULT_API}`, {
         //     params: {
@@ -276,14 +298,11 @@ const doBufferEpic = (action$, { getState = () => { } }) =>
             ]);
         });
 
-// ส่วน Add_As_Layer ที่ยังไม่สมบูรณ์
-const addAsLayerEpic = (action$) =>
+// ส่วน Add_As_Layer ที่ไม่โดนเรียก เพราะว่าอะไร ?
+const addAsBufferedLayerEpic = (action$) => 
     action$.ofType(BUFFER_ADD_AS_LAYER)
-        .filter(() => {
-            return (getState().controls.buffer || {}).enabled || false;
-        })
         .switchMap(({ bufferedFtCollection }) => {
-            console.log('==> addAsLayerEpic')
+            // console.log('==> addAsLayerEpic')
             console.log('bufferedLayer in epic:', bufferedFtCollection)
             return Rx.Observable.of(
                 addLayer({
@@ -300,10 +319,11 @@ const addAsLayerEpic = (action$) =>
                         "fillOpacity": 1,
                         "color": "rgba(255, 0, 0, 1)",
                         "fillColor": "rgb(4, 4, 250)"
-                    }
+                    },
+                    title: "BufferedLayer"
                 })
             );
-        });
+        })
 
 const defaultState = {
     radius: 1,
@@ -349,6 +369,7 @@ class BufferDialog extends React.Component {
         onChangeLayer: () => { },
         onChangeUnit: () => { },
         onDoBuffer: () => { },
+        onAddAsLayer: () => {}
 
     };
 
@@ -376,6 +397,13 @@ class BufferDialog extends React.Component {
 
     onReset = () => {
         this.props.onChangeLayer(-1)
+    }
+
+    onAddAsLayer = () => {
+        console.log('BUFFERGEOJSON',this.props.bufferedFeatures)
+        console.log('RADIUS',this.props.radius)
+        console.log('UNIT',this.props.unitValue, typeof(this.props.unitValue))
+        this.props.onAddAsLayer(this.props.bufferedFeatures)
     }
 
     render() {
@@ -526,6 +554,7 @@ const buffer = connect(
         onChangeUnit: setUnit,
         onChangeRadius: setRadius,
         onDoBuffer: doBuffer,
+        onAddAsLayer: addAsLayer
 
         // onDisplaySetting: displaySetting,
         // onAddPoint: addPoint,
@@ -563,6 +592,6 @@ export default {
     },
     epics: {
         doBufferEpic,
-        addAsLayerEpic
+        addAsBufferedLayerEpic
     },
 };
