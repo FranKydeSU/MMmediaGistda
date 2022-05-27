@@ -39,23 +39,23 @@ const layerNodesExtracter = (groups) => {
 const getFeature = (layerSelected) => {
     const DEFAULT_API = 'https://geonode.longdo.com/geoserver/wfs';
     return new Promise((resolve, reject) => {
-            let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`,
-                {
-                    params: {
-                        service: 'WFS',
-                        version: layerSelected.version,
-                        request: 'GetFeature',
-                        typeName: layerSelected.name,
-                        outputFormat: 'application/json'
-                    }
-                })
-            resolve(getFromAPI);
-            reject((dispatch) => { dispatch(fetchGeoJsonFailure('error from promise')) })
-        })
+        let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`,
+            {
+                params: {
+                    service: 'WFS',
+                    version: layerSelected.version,
+                    request: 'GetFeature',
+                    typeName: layerSelected.name,
+                    outputFormat: 'application/json'
+                }
+            })
+        resolve(getFromAPI);
+        reject((dispatch) => { dispatch(fetchGeoJsonFailure('error from promise')) })
+    })
 }
 
 const loadFeature = function (layerSelected1, layerSelected2) {
-    
+
     console.log('LayerSelected1 ', layerSelected1)
     console.log('LayerSelected2 ', layerSelected2)
     if (!layerSelected1 || !layerSelected2) {
@@ -103,7 +103,7 @@ const loadFeature = function (layerSelected1, layerSelected2) {
         } else if (layerSelected1.features && !layerSelected2.features) {
 
             console.log('===Enter IF lry2 dont have layer===')
-            console.log('layerSelected1: ',layerSelected1)
+            console.log('layerSelected1: ', layerSelected1)
             let getFeature2 = getFeature(layerSelected2)
 
             getFeature2.then(featuresColl => {
@@ -314,19 +314,20 @@ const mergeAsLayerEpic = (action$) =>
                 // changeDrawingStatus('drawOrEdit', 'MultiPolygons', 'mergelyr', featureCollections, drawOptions),
                 addLayer({
                     type: 'vector',
-                    id: uuidv1(),
+                    id: uuidv1(), // เหมือนเกี่ยวว่า ถ้าเป็น th_map_provinces_shapes.1 จะรันไม่ได้
                     name: 'MergeLayer',
                     hideLoading: true,
                     features: [...featureCollection.features],
                     visibility: true,
-                    style: {
-                        "weight": 1,
-                        "radius": 7,
-                        "opacity": 1,
-                        // "fillOpacity": 1,
-                        "color": "rgba(255, 0, 0, 1)",
-                        // "fillColor": "rgb(4, 4, 250)"
-                    },
+                    style: [
+                        {
+                            opacity: 1,
+                            fillOpacity: 0.5,
+                            color: "rgba(255, 0, 0, 1)",
+                            fillColor: "rgb(4, 4, 250)",
+                            id: 'th_map_provinces_shapes.1',
+                        }
+                    ],
                     title: 'MergeLayer_' + String(mergeLyr_id++)
                 })
             );
