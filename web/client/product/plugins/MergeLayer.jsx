@@ -123,6 +123,14 @@ const loadFeature = function (layerSelected1, layerSelected2) {
             console.log('===Enter IF both dont have layer===')
             Promise.all([getFeature1, getFeature2]).then(value => {
                 let mergedFeatures = featureCollection(value[0].data.features.concat(value[1].data.features))
+                mergedFeatures.features[0].style =
+                {
+                    opacity: 1,
+                    fillOpacity: 0.5,
+                    color: "rgba(255, 0, 0, 1)",
+                    fillColor: "rgb(4, 4, 250)",
+                    id: 'f',
+                }
                 console.log('value[0].data.features', value[0].data.features)
                 console.log('value[1].data.features', value[1].data.features)
                 console.log('mergedFeatures:', mergedFeatures)
@@ -276,6 +284,7 @@ const doMergeEpic = (action$, { getState = () => { } }) =>
         });
 
 // epic ที่ต้องการนำ features ที่ merge แล้วเพิ่มใน layers panel ด้านซ้ายกับวาดลงแผนที่
+let mergeLyr_id = 0
 const mergeAsLayerEpic = (action$) =>
     action$.ofType(MERGELYR_ADD_AS_LAYER)
         .switchMap(({ featureCollection }) => {
@@ -309,7 +318,6 @@ const mergeAsLayerEpic = (action$) =>
             //     },
             // ]
             // console.log('fe ', fe)
-            let mergeLyr_id = 0
             return Rx.Observable.of(
                 // changeDrawingStatus('drawOrEdit', 'MultiPolygons', 'mergelyr', featureCollections, drawOptions),
                 addLayer({
@@ -325,7 +333,10 @@ const mergeAsLayerEpic = (action$) =>
                             fillOpacity: 0.5,
                             color: "rgba(255, 0, 0, 1)",
                             fillColor: "rgb(4, 4, 250)",
-                            id: 'th_map_provinces_shapes.1',
+                            type: "MultiPolygon"
+                        },
+                        {
+                            
                         }
                     ],
                     title: 'MergeLayer_' + String(mergeLyr_id++)
@@ -416,6 +427,7 @@ class MergeLayerComponent extends React.Component {
     render() {
         return this.props.show ? (
             <Dialog Dialog id="measure-dialog" style={this?.dialogStyle} start={this?.start} >
+                {console.log('ALL_LAYERS: ', this.props.allLayers)}
                 <div key="header" role="header">
                     <Glyphicon glyph="folder-open" />&nbsp;Merge
                     <button key="close" onClick={this.onClose} className="close"><Glyphicon glyph="1-close" /></button>
