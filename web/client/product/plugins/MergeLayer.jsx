@@ -21,6 +21,9 @@ import { addLayer } from '../../actions/layers'
 import { changeDrawingStatus } from '../../actions/draw';
 import { all } from 'lodash/fp';
 import { parseString } from '../../utils/CoordinatesUtils';
+import { getDependencyLayerParams } from '../../components/widgets/enhancers/utils'
+
+import {toCQLFilter} from '../../../client/utils/FilterUtils';
 
 createControlEnabledSelector("mergelyr");
 
@@ -39,16 +42,20 @@ const layerNodesExtracter = (groups) => {
 const getFeature = (layerSelected) => {
     const DEFAULT_API = 'https://geonode.longdo.com/geoserver/wfs';
     return new Promise((resolve, reject) => {
-        let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`,
-            {
-                params: {
-                    service: 'WFS',
-                    version: layerSelected.version,
-                    request: 'GetFeature',
-                    typeName: layerSelected.name,
-                    outputFormat: 'application/json'
-                }
-            })
+        let params =  {
+                service: 'WFS',
+                version: layerSelected.version,
+                request: 'GetFeature',
+                typeName: layerSelected.name,
+                outputFormat: 'application/json',
+            }
+        if (layerSelected.layerFilter) {
+            const cql_filter = toCQLFilter(layerSelected?.layerFilter);
+            console.log('cql_filter', cql_filter)
+            params.cql_filter = cql_filter
+        }
+        console.log('params', params)
+        let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`,{params})
         resolve(getFromAPI);
         reject((dispatch) => { dispatch(fetchGeoJsonFailure('error from promise')) })
     })
@@ -122,15 +129,12 @@ const loadFeature = function (layerSelected1, layerSelected2) {
             let getFeature2 = getFeature(layerSelected2)
             console.log('===Enter IF both dont have layer===')
             Promise.all([getFeature1, getFeature2]).then(value => {
-                let mergedFeatures = featureCollection(value[0].data.features.concat(value[1].data.features))
-                mergedFeatures.features[0].style =
-                {
-                    opacity: 1,
-                    fillOpacity: 0.5,
-                    color: "rgba(255, 0, 0, 1)",
-                    fillColor: "rgb(4, 4, 250)",
-                    id: 'f',
+                if (value[0].data.features[0].geometry.type !== value[1].data.features[0].geometry.type) {
+                    dispatch(fetchGeoJsonFailure('Different layer type!'))
+                    dispatch(loading(false))
+                    return;
                 }
+                let mergedFeatures = featureCollection(value[0].data.features.concat(value[1].data.features))
                 console.log('value[0].data.features', value[0].data.features)
                 console.log('value[1].data.features', value[1].data.features)
                 console.log('mergedFeatures:', mergedFeatures)
@@ -141,7 +145,7 @@ const loadFeature = function (layerSelected1, layerSelected2) {
                 dispatch(setLayer2(-1))
                 dispatch(loading(false))
             }).catch((error) => {
-                dispatch(fetchGeoJsonFailure('error'))
+                dispatch(fetchGeoJsonFailure('error in IF both dont have layer'))
                 dispatch(loading(false))
             })
         }
@@ -288,57 +292,16 @@ let mergeLyr_id = 0
 const mergeAsLayerEpic = (action$) =>
     action$.ofType(MERGELYR_ADD_AS_LAYER)
         .switchMap(({ featureCollection }) => {
-            const drawOptions = {
-                featureProjection: "EPSG:4326",
-                stopAfterDrawing: true,
-                editEnabled: false,
-                selectEnabled: true,
-                translateEnabled: false,
-                drawEnabled: false
-            };
             console.log('==> mergeAsLayerEpic')
             console.log('featuresWantToAddLayer:', featureCollection)
-            const featureCollections = [
-                {
-                    type: "FeatureCollection",
-                    newFeature: true,
-                    id: uuidv1(),
-                    geometry: null,
-                    properties: uuidv1(),
-                    features: [...featureCollection.features],
-                },
-            ];
-            // const fe = [
-            //     {
-            //         "type": "Feature",
-            //         "geometry": {
-            //             "type": "Point",
-            //             "coordinates": [100, 13],
-            //         }
-            //     },
-            // ]
-            // console.log('fe ', fe)
             return Rx.Observable.of(
-                // changeDrawingStatus('drawOrEdit', 'MultiPolygons', 'mergelyr', featureCollections, drawOptions),
                 addLayer({
                     type: 'vector',
-                    id: uuidv1(), // เหมือนเกี่ยวว่า ถ้าเป็น th_map_provinces_shapes.1 จะรันไม่ได้
+                    id: uuidv1(),
                     name: 'MergeLayer',
                     hideLoading: true,
                     features: [...featureCollection.features],
                     visibility: true,
-                    style: [
-                        {
-                            opacity: 1,
-                            fillOpacity: 0.5,
-                            color: "rgba(255, 0, 0, 1)",
-                            fillColor: "rgb(4, 4, 250)",
-                            type: "MultiPolygon"
-                        },
-                        {
-                            
-                        }
-                    ],
                     title: 'MergeLayer_' + String(mergeLyr_id++)
                 })
             );
