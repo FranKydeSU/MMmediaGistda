@@ -82,14 +82,6 @@ const addAsLayer = function (bufferedFtCollection) {
     };
 }
 
-const featureLoaded = function (featuresSelected, bufferedFeatures) {
-    return {
-        type: BUFFER_FEATURE_LOADED,
-        featuresSelected,
-        bufferedFeatures
-    };
-};
-
 const loading = function (isLoading) {
     return {
         type: BUFFER_SET_LOADING,
@@ -104,12 +96,6 @@ const fetchGeoJsonFailure = function (error) {
         error
     }
 }
-
-// const clearLoadFeature = function () {
-//     return (dispatch) => {
-//         dispatch(featureLoaded([]));
-//     }
-// }
 
 const selector = (state) => {
     return {
@@ -167,7 +153,6 @@ const loadFeature = function (layerSelected) {
             dispatch(fetchGeoJsonFailure('Please select layers.'))
         }
     }
-    const DEFAULT_API = 'https://geonode.longdo.com/geoserver/wfs';
     return (dispatch, getState) => {
         dispatch(loading(true))
         dispatch(fetchGeoJsonFailure(''))
@@ -183,124 +168,76 @@ const loadFeature = function (layerSelected) {
                 dispatch(addAsLayer(bufferedFeatures))
                 dispatch(setLayer(-1))
                 dispatch(loading(false))
+            }).catch((e) => {
+                dispatch(fetchGeoJsonFailure('ERROR in IF layer have feature'))
+                dispatch(loading(false))
             })
+
         } else {
+            const DEFAULT_API = 'https://geonode.longdo.com/geoserver/wfs';
             let getFeature = new Promise((resolve, reject) => {
-                let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`,
-                    {
-                        params: {
-                            service: 'WFS',
-                            version: layerSelected.version,
-                            request: 'GetFeature',
-                            typeName: layerSelected.name,
-                            outputFormat: 'application/json'
-                        }
-                    })
+                let params = {
+                    service: 'WFS',
+                    version: layerSelected.version,
+                    request: 'GetFeature',
+                    typeName: layerSelected.name,
+                    outputFormat: 'application/json',
+                }
+                // สำหรับ layer ที่มีการ filter จะมี layerFilter อยู่ใน obj
+                if (layerSelected.layerFilter) {
+                    const cql_filter = toCQLFilter(layerSelected?.layerFilter);
+                    console.log('cql_filter', cql_filter)
+                    params.cql_filter = cql_filter
+                }
+                let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`, { params })
                 resolve(getFromAPI)
             })
 
-            getFeature.then((value) => {
-                let featureGeoJson = value.data
-                console.log('featureGeoJson: ', featureGeoJson)
-                new Promise((resolve, reject) => {
-                    console.log('getState().buffer.radius', getState().buffer.radius)
-                    console.log('getState().buffer.unitValue', getState().buffer.unitValue)
-                    let result = turfBuffer(featureGeoJson, getState().buffer.radius, { units: getState().buffer.unitValue });
-                    resolve(result)
-                }).then(bufferedFeatures => {
-                    console.log('bufferedLayer after Promise: ', bufferedFeatures)
-                    dispatch(featureLoaded(featureGeoJson, bufferedFeatures))
-                    dispatch(addAsLayer(bufferedFeatures))
-                    dispatch(setLayer(-1))
+            getFeature.then((featureColl) => {
+                let featureGeoJson = featureColl.data
+                let typeName = featureGeoJson.features[0].geometry.type
+                let chkTypeAllFeature = featureGeoJson.features.every((feature) => feature.geometry.type === typeName)
+                if (chkTypeAllFeature) {
+                    new Promise((resolve, reject) => {
+                        console.log('getState().buffer.radius', getState().buffer.radius)
+                        console.log('getState().buffer.unitValue', getState().buffer.unitValue)
+                        let result = turfBuffer(featureGeoJson, getState().buffer.radius, { units: getState().buffer.unitValue });
+                        resolve(result)
+                    }).then(bufferedFeatures => {
+                        console.log('bufferedLayer after Promise: ', bufferedFeatures)
+                        dispatch(addAsLayer(bufferedFeatures))
+                        dispatch(setLayer(-1))
+                        dispatch(loading(false))
+                    }).catch(() => {
+                        dispatch(fetchGeoJsonFailure('ERROR in Turf'))
+                        dispatch(loading(false))
+                    })
+                } else {
+                    dispatch(fetchGeoJsonFailure('All feature must be same type'))
                     dispatch(loading(false))
-                }).catch(()=>{
-                    dispatch(loading(false))
-                    dispatch(fetchGeoJsonFailure('error'))
-                })
+                }
+            }).catch(() => {
+                dispatch(loading(false))
+                dispatch(fetchGeoJsonFailure('ERROR in getFeature'))
             })
-
-            // axios.get(`${layerSelected.url || DEFAULT_API}`, {
-            //     params: {
-            //         service: 'WFS',
-            //         version: layerSelected.version,
-            //         request: 'GetFeature',
-            //         typeName: layerSelected.name,
-            //         outputFormat: 'application/json'
-            //     }
-            // }).then(({ data }) => {
-            //     console.log('- Can get featureLayer -')
-            //     let featureLayer = data
-            //     console.log('featureLayer: ', featureLayer)
-            //     let bufferedLayer = turfBuffer(featureLayer, radius, { units: uom });
-            //     console.log('bufferedLayer: ', bufferedLayer)
-            //     dispatch(featureLoaded(featureLayer, bufferedLayer))
-            //         try {
-            //             const layerType = layerInfo.properties.find((layerType) => { return layerType.localType === 'Point' })
-            //             if (layerType.name !== null || layerType.name !== 'undefined') {
-            //                 const positionPoint = center.y + ' ' + center.x
-            //                 axios.get(`${layerSelected.url || DEFAULT_API}`, {
-            //                     params: {
-            //                         service: 'WFS',
-            //                         version: layerSelected.version,
-            //                         request: 'GetFeature',
-            //                         typeNames: layerSelected.name,
-            //                         outputFormat: 'application/json',
-            //                         SRSName: 'EPSG:4326',
-            //                         cql_filter: `DWithin(${layerType.name},POINT(${positionPoint}),${radius},meters)`
-            //                     }
-            //                 }).then((response) => {
-            //                     console.log(response.data)
-            //                     var featuresGeoJson = response.data.features
-            //                     featuresGeoJson.map((geoJson) => {
-            //                         if (geoJson.geometry.type === 'Point') {
-            //                             geoJson['style'] = {
-            //                                 iconGlyph: "map-marker",
-            //                                 iconShape: "circle",
-            //                                 iconColor: "blue",
-            //                                 highlight: false,
-            //                                 id: uuidv1()
-            //                             }
-            //                         }
-            //                     })
-            //                     featuresGeoJson.push(radiusFeature)
-            //                     dispatch(featureLoaded(featuresGeoJson));
-            //                 })
-            //             }
-            //         } catch (error) {
-            //             console.log(error)
-            //             dispatch(featureLoaded([]));
-            //         }
-            //         }).catch((e) => {
-            //             console.log(e);
-            //             // dispatch(featureLoaded([]));
-            //         });
         }
-    };
+    }
 }
 
+// epic ที่ไว้ดึง featureCollection จาก services โดย loadFeature function
 const doBufferEpic = (action$, { getState = () => { } }) =>
     action$.ofType(BUFFER_DO_BUFFER)
         .filter(() => {
             return (getState().controls.buffer || {}).enabled || false;
         })
         .switchMap(({ layerSelected }) => {
-            // const center = getState().map.present.center;
-            // const radius = getState().nearby.radius
-            // const geometry = circle(
-            //     [center.x, center.y],
-            //     radius,
-            //     {
-            //         steps: 100,
-            //         units: 'kilometers'
-            //     }
-            // ).geometry;
-            // const feature = featureRadius(radius, geometry)
             return Rx.Observable.from([
                 loadFeature(layerSelected)
             ]);
         });
 
-// ส่วน Add_As_Layer ที่ยังไม่สมบูรณ์
+// ส่วน Add_As_Layer ที่ buffer แล้วมาเพิ่มใน layers panel ด้านซ้ายกับวาดลงแผนที่
+let buffer_id = 0
 const addAsBufferedLayerEpic = (action$) =>
     action$.ofType(BUFFER_ADD_AS_LAYER)
         .switchMap(({ bufferedFtCollection }) => {
@@ -314,15 +251,15 @@ const addAsBufferedLayerEpic = (action$) =>
                     hideLoading: true,
                     features: [...bufferedFtCollection.features],
                     visibility: true,
-                    style: {
-                        "weight": 1,
-                        "radius": 7,
-                        "opacity": 1,
-                        "fillOpacity": 1,
-                        "color": "rgba(255, 0, 0, 1)",
-                        "fillColor": "rgb(4, 4, 250)"
-                    },
-                    title: 'BufferedLayer'
+                    // style: {
+                    //     "weight": 1,
+                    //     "radius": 7,
+                    //     "opacity": 1,
+                    //     "fillOpacity": 1,
+                    //     "color": "rgba(255, 0, 0, 1)",
+                    //     "fillColor": "rgb(4, 4, 250)"
+                    // },
+                    title: 'BufferedLayer_' + String(buffer_id++)
                 })
             );
         });
@@ -335,7 +272,6 @@ const defaultState = {
     error: ''
 }
 
-// Component part
 class BufferDialog extends React.Component {
     static propTypes = {
         show: PropTypes.bool,
@@ -429,11 +365,6 @@ class BufferDialog extends React.Component {
                         </Col>
                         <Col md={6}>
                             <DropdownList
-                                // disabled={disabled}
-                                // value={this?.props?.uom?.length?.label}
-                                // onChange={(value) => {
-                                //     this.props.onChangeUom("length", value, this?.props?.uom);
-                                // }}
                                 id='bufferUnitValues'
                                 data={this.props.bufferUnitValues}
                                 dataKey="value"
@@ -447,30 +378,6 @@ class BufferDialog extends React.Component {
                             />
                         </Col>
                     </Row>
-                    {/* <BorderLayout
-                        id={this.props.id}
-                        style={{ overflow: 'visible' }}
-                        header={
-                            <div>
-                                <ButtonToolbar>
-                                    <Toolbar
-                                        btnDefaultProps={{
-                                            className: 'square-button-md',
-                                            bsStyle: 'primary'
-                                        }}
-                                        buttons={
-                                            [
-                                                {
-                                                    glyph: 'remove',
-                                                    visible: !!this?.props?.withReset,
-                                                    tooltip: <Message msgId="measureComponent.resetTooltip" />,
-                                                    onClick: () => this?.onResetClick()
-                                                }
-                                            ]
-                                        } />
-                                </ButtonToolbar>
-                            </div>
-                        }></BorderLayout> */}
                     <div
                         style={{
                             display: "flex"
@@ -489,13 +396,11 @@ class BufferDialog extends React.Component {
                                 :
                                 <button
                                     key="buffer-save"
-                                    // onClick={this?.onSearch}
                                     className="btn btn-longdo-outline-info"
                                     style={{ minWidth: "100px" }}
-                                    // id="find-route"
                                     onClick={this.onDoBuffer}
                                 >
-                                    Save
+                                    Buffer
                                 </button>
                         }
 
@@ -519,11 +424,6 @@ class BufferDialog extends React.Component {
     }
 }
 
-// const mapStateToProps = (state) => ({})
-
-// const mapDispatchToProps = {}
-
-// export default connect(mapStateToProps, mapDispatchToProps)(Buffer)
 const buffer = connect(
     createSelector(
         [
@@ -548,18 +448,6 @@ const buffer = connect(
         onChangeUnit: setUnit,
         onChangeRadius: setRadius,
         onDoBuffer: doBuffer,
-
-        // onDisplaySetting: displaySetting,
-        // onAddPoint: addPoint,
-        // onSwapPoint: swapPoint,
-        // onRemovePoint: removePoint,
-        // onSearch: searchRouting,
-        // onClearSearch: clearSearchRouting,
-        // onChangePointInput: changePointInput,
-        // onClickGuide: clickGuide,
-        // onClickSearchResult: clickSearchResult,
-        // onChangeRouteMode: changeRouteMode,
-        // onChangeRouteType: changeRouteType
     },
     null,
     {
