@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types'
-import React, { Component } from 'react'
+import React from 'react'
 import { connect } from 'react-redux'
 import { createControlEnabledSelector } from '../../selectors/controls';
 import { createSelector } from 'reselect';
@@ -13,13 +13,9 @@ import { addLayer } from '../../actions/layers'
 import { featureCollection } from '@turf/helpers'
 import uuidv1 from 'uuid/v1';
 
-// import DockablePanel from '../../components/misc/DockablePanel';
 import Dialog from '../../components/misc/Dialog';
 import { DropdownList } from 'react-widgets';
-import Toolbar from '../../components/misc/toolbar/Toolbar';
-import { ButtonToolbar, Col, FormGroup, Glyphicon, Grid, Row, Tooltip } from 'react-bootstrap';
-import Message from '../../components/I18N/Message';
-import BorderLayout from '../../components/layout/BorderLayout'
+import { Col, Glyphicon,Row} from 'react-bootstrap';
 import { groupsSelector } from '../../selectors/layers'
 import LayerSelector from './nearby/LayerSelector'
 
