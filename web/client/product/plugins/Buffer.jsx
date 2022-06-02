@@ -15,9 +15,11 @@ import uuidv1 from 'uuid/v1';
 
 import Dialog from '../../components/misc/Dialog';
 import { DropdownList } from 'react-widgets';
-import { Col, Glyphicon,Row} from 'react-bootstrap';
+import { Col, Glyphicon, Row } from 'react-bootstrap';
 import { groupsSelector } from '../../selectors/layers'
-import LayerSelector from './nearby/LayerSelector'
+import LayerSelector from './buffer/LayerSelector'
+
+import { toCQLFilter } from '../../../client/utils/FilterUtils';
 
 createControlEnabledSelector("buffer");
 
@@ -143,6 +145,7 @@ function bufferReducer(state = defaultState, action) {
     }
 }
 
+let layerTitle = ''
 const loadFeature = function (layerSelected) {
     if (!layerSelected) {
         return (dispatch) => {
@@ -150,15 +153,64 @@ const loadFeature = function (layerSelected) {
         }
     }
     return (dispatch, getState) => {
+        console.log('layerSelected', layerSelected)
         dispatch(loading(true))
         dispatch(fetchGeoJsonFailure(''))
         if (layerSelected.features) {
+            layerTitle = layerSelected.title || layerSelected.name
             console.log('Enter IF layerSelected.features', layerSelected)
+            console.log('layerTitle', layerTitle)
+
             new Promise((resolve, reject) => {
-                let ftCollection = featureCollection(layerSelected.features)
-                console.log('featureCollection', ftCollection)
-                let result = turfBuffer(ftCollection, getState().buffer.radius, { units: getState().buffer.unitValue });
-                resolve(result)
+                let featureGeoJson;
+                let temp = [];
+                let chkTypeAllFeature;
+                let typeName;
+                if (layerTitle === 'Annotations') { // อาจไม่ได้มีแค่ Annotations
+                    let ftCollOfAnnot = layerSelected.features.map(featureCollcetion => featureCollcetion.features[0])
+                    typeName = ftCollOfAnnot[0].geometry.type
+                    console.log('ftCollOfAnnot', ftCollOfAnnot)
+                    chkTypeAllFeature = ftCollOfAnnot.every((feature) => feature.geometry.type === typeName)
+                    console.log('ftCollOfAnnot', ftCollOfAnnot, typeName, chkTypeAllFeature)
+                }
+                else
+                    chkTypeAllFeature = featureGeoJson.features.every((feature) => feature.geometry.type === typeName)
+
+                if (chkTypeAllFeature) {
+                    if (layerTitle === 'Annotations') {
+                        let features = []
+                        console.log('ENTER Annotation')
+                        for (let i=0 ; i<layerSelected.features.length ; i++) {
+                            for (let j=0 ; j<layerSelected.features[i].features.length ; j++) {
+                                features.push(layerSelected.features[i].features[j])
+                                console.log('layerSelected.features[i]', layerSelected.features[i])
+                                console.log('layerSelected.features[i].features.length', layerSelected.features[i].features.length)
+                            }
+                        }
+                        console.log('features', features)
+                        featureGeoJson = featureCollection(features)
+                        featureGeoJson.features.forEach((feature) => temp.push(feature.properties.id))
+                        let result = turfBuffer(featureGeoJson, getState().buffer.radius, { units: getState().buffer.unitValue });
+                        result.features.forEach((feature, i) => {
+                            feature.id = 'buffered_' + temp[i]
+                        })
+                        console.log('featureCollection', result)
+                        resolve(result)
+                    }
+
+                    else {
+                        featureGeoJson = featureCollection(layerSelected.features)
+                        featureGeoJson.features.forEach((feature) => temp.push(feature.id))
+                        let result = turfBuffer(featureGeoJson, getState().buffer.radius, { units: getState().buffer.unitValue });
+                        result.features.forEach((feature, i) => feature.id = 'buffered_' + temp[i])
+                        resolve(result)
+                    }
+                } else {
+                    dispatch(fetchGeoJsonFailure('All feature must be same type'))
+                    dispatch(loading(false))
+                }
+                console.log('featureCollection', featureGeoJson)
+                console.log('temp', temp)
             }).then(bufferedFeatures => {
                 console.log('bufferedLayer after Promise in if: ', bufferedFeatures)
                 dispatch(addAsLayer(bufferedFeatures))
@@ -189,15 +241,19 @@ const loadFeature = function (layerSelected) {
                 resolve(getFromAPI)
             })
 
+            layerTitle = layerSelected.title || layerSelected.name
             getFeature.then((featureColl) => {
                 let featureGeoJson = featureColl.data
                 let typeName = featureGeoJson.features[0].geometry.type
                 let chkTypeAllFeature = featureGeoJson.features.every((feature) => feature.geometry.type === typeName)
                 if (chkTypeAllFeature) {
                     new Promise((resolve, reject) => {
-                        console.log('getState().buffer.radius', getState().buffer.radius)
-                        console.log('getState().buffer.unitValue', getState().buffer.unitValue)
+                        console.log('featureGeoJson', featureGeoJson)
+                        let temp = []
+                        featureGeoJson.features.forEach((feature) => temp.push(feature.id))
+                        console.log('temp', temp)
                         let result = turfBuffer(featureGeoJson, getState().buffer.radius, { units: getState().buffer.unitValue });
+                        result.features.forEach((feature, i) => feature.id = 'buffered_ ' + temp[i])
                         resolve(result)
                     }).then(bufferedFeatures => {
                         console.log('bufferedLayer after Promise: ', bufferedFeatures)
@@ -233,7 +289,6 @@ const doBufferEpic = (action$, { getState = () => { } }) =>
         });
 
 // ส่วน Add_As_Layer ที่ buffer แล้วมาเพิ่มใน layers panel ด้านซ้ายกับวาดลงแผนที่
-let buffer_id = 0
 const addAsBufferedLayerEpic = (action$) =>
     action$.ofType(BUFFER_ADD_AS_LAYER)
         .switchMap(({ bufferedFtCollection }) => {
@@ -255,7 +310,7 @@ const addAsBufferedLayerEpic = (action$) =>
                     //     "color": "rgba(255, 0, 0, 1)",
                     //     "fillColor": "rgb(4, 4, 250)"
                     // },
-                    title: 'BufferedLayer_' + String(buffer_id++)
+                    title: 'Buffered_' + layerTitle
                 })
             );
         });

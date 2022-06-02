@@ -55,6 +55,8 @@ const getFeature = (layerSelected) => {
     })
 }
 
+let layerTitle1 = ''
+let layerTitle2 = ''
 const loadFeature = function (layerSelected1, layerSelected2) {
     // กรณีไม่เลือกครบ 2 layerใน dropdown
     if (!layerSelected1 || !layerSelected2) {
@@ -95,12 +97,20 @@ const loadFeature = function (layerSelected1, layerSelected2) {
             }
             return false
         }
-        const handleMerge = (canMerge, features1, features2) => {
+        const handleMerge = (canMerge, features1, features2, title) => {
             if (canMerge) {
+                console.log('features1', features1)
+                console.log('features2', features2)
                 let mergedFeatures = featureCollection(features1.concat(features2))
+                if (title === 'Annotations') {
+                    mergedFeatures.features.forEach((feature) => feature.id = 'merged_' + feature.properties.id || uuidv1())
+                } else {
+                    mergedFeatures.features.forEach((feature) => feature.id = 'merged_' + feature.id || uuidv1())
+                }
                 dispatch(mergeAsLayer(mergedFeatures))
                 dispatch(setLayer1(-1)); dispatch(setLayer2(-1))
                 dispatch(loading(false))
+
             } else {
                 dispatch(fetchGeoJsonFailure(`\'${features1[0].geometry.type}\' - \'${features2[0].geometry.type}\' type can't be merged`))
                 dispatch(loading(false))
@@ -110,6 +120,8 @@ const loadFeature = function (layerSelected1, layerSelected2) {
         dispatch(loading(true))
         dispatch(fetchGeoJsonFailure(''))
         // ทั้ง 2 layer มี feature อยู่ใน Client side แล้ว
+        layerTitle1 = layerSelected1.title || layerSelected1.name
+        layerTitle2 = layerSelected2.title || layerSelected2.name
         if (layerSelected1.features && layerSelected2.features) {
             handleMerge(chkFeatTypeCondition(layerSelected1.features[0].geometry.type, layerSelected2.features[0].geometry.type),
                 layerSelected1.features,
@@ -124,20 +136,35 @@ const loadFeature = function (layerSelected1, layerSelected2) {
                     layerSelected2.features)
             }).catch((e) => {
                 // ERROR in IF layer1 don't have feature
-                dispatch(fetchGeoJsonFailure('ERROR in layer1'))
+                dispatch(fetchGeoJsonFailure('ERROR in getFeature1'))
                 dispatch(loading(false))
             })
 
             // layer ที่ 1 มี feature อยู่ใน Client side แล้ว
         } else if (layerSelected1.features && !layerSelected2.features) {
+            let featuresArray = []
+            console.log('layerTitle1', layerTitle1)
+            if (layerTitle1 === 'Annotations') { // อาจไม่ได้มีแค่ Annotations
+                for (let i = 0; i < layerSelected1.features.length; i++) {
+                    for (let j = 0; j < layerSelected1.features[i].features.length; j++) {
+                        featuresArray.push(layerSelected1.features[i].features[j])
+                        console.log('layerSelected.features[i]', layerSelected1.features[i].features[j])
+                    }
+                }
+                console.log('features', featuresArray)
+            }
+            console.log('featuresArray[0].geometry.type', featuresArray[0].geometry.type)
             let getFeature2 = getFeature(layerSelected2)
             getFeature2.then(featuresColl2 => {
-                handleMerge(chkFeatTypeCondition(layerSelected1.features[0].geometry.type, featuresColl2.data.features[0].geometry.type),
-                    layerSelected1.features,
-                    featuresColl2.data.features)
+                console.log('featuresArray[0].geometry.type', featuresArray[0].geometry.type)
+                handleMerge(chkFeatTypeCondition(featuresArray[0].geometry.type, featuresColl2.data.features[0].geometry.type),
+                    featuresArray,
+                    featuresColl2.data.features,
+                    layerTitle1
+                )
             }).catch((e) => {
                 // ERROR in IF layer2 don't have feature
-                dispatch(fetchGeoJsonFailure('ERROR in layer2'))
+                dispatch(fetchGeoJsonFailure('ERROR in getFeature2'))
                 dispatch(loading(false))
             })
 
@@ -151,7 +178,7 @@ const loadFeature = function (layerSelected1, layerSelected2) {
                     value[1].data.features)
             }).catch((e) => {
                 // ERROR in IF both don't have feature
-                dispatch(fetchGeoJsonFailure('ERROR in both layers'))
+                dispatch(fetchGeoJsonFailure('ERROR in Promise.all'))
                 dispatch(loading(false))
             })
         }
@@ -259,7 +286,6 @@ const doMergeEpic = (action$, { getState = () => { } }) =>
         });
 
 // epic ที่นำ features ที่ merge แล้วเพิ่มใน layers panel ด้านซ้ายกับวาดลงแผนที่
-let mergeLyr_id = 0
 const mergeAsLayerEpic = (action$) =>
     action$.ofType(MERGELYR_ADD_AS_LAYER)
         .switchMap(({ featureCollection }) => {
@@ -273,7 +299,7 @@ const mergeAsLayerEpic = (action$) =>
                     hideLoading: true,
                     features: [...featureCollection.features],
                     visibility: true,
-                    title: 'MergeLayer_' + String(mergeLyr_id++)
+                    title: 'Merged_' + layerTitle1 + '&' + layerTitle2
                 })
             );
         });
