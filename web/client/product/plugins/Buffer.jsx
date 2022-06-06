@@ -145,6 +145,17 @@ function bufferReducer(state = defaultState, action) {
     }
 }
 
+const spreadFeatures = (layerSelected) => { // for Annotation
+    let featuresArray = []
+    for (let i = 0; i < layerSelected.features.length; i++) {
+        for (let j = 0; j < layerSelected.features[i].features.length; j++) {
+            featuresArray.push(layerSelected.features[i].features[j])
+        }
+    }
+    console.log('spreadFeatures: ', featuresArray)
+    return featuresArray
+}
+
 let layerTitle = ''
 const loadFeature = function (layerSelected) {
     if (!layerSelected) {
@@ -156,25 +167,28 @@ const loadFeature = function (layerSelected) {
         console.log('layerSelected', layerSelected)
         dispatch(loading(true))
         dispatch(fetchGeoJsonFailure(''))
+        layerTitle = layerSelected.title || layerSelected.name
+
+        // ถ้า layer นี้มี features ใน Client Side
         if (layerSelected.features) {
-            layerTitle = layerSelected.title || layerSelected.name
             console.log('Enter IF layerSelected.features', layerSelected)
             console.log('layerTitle', layerTitle)
 
             new Promise((resolve, reject) => {
-                let featureGeoJson;
+                let featureGeoJson = layerSelected.features;
                 let temp = [];
                 let chkTypeAllFeature;
                 let typeName;
                 if (layerTitle === 'Annotations') { // อาจไม่ได้มีแค่ Annotations
-                    let ftCollOfAnnot = layerSelected.features.map(featureCollcetion => featureCollcetion.features[0])
-                    typeName = ftCollOfAnnot[0].geometry.type
-                    console.log('ftCollOfAnnot', ftCollOfAnnot)
-                    chkTypeAllFeature = ftCollOfAnnot.every((feature) => feature.geometry.type === typeName)
-                    console.log('ftCollOfAnnot', ftCollOfAnnot, typeName, chkTypeAllFeature)
+                    let featureGeoJson = spreadFeatures(layerSelected)
+                    typeName = featureGeoJson[0].geometry.type
+                    chkTypeAllFeature = featureGeoJson.every((feature) => feature.geometry.type === typeName)
+                    console.log('featuresCollOfAnnotation', featureGeoJson)
                 }
-                else
-                    chkTypeAllFeature = featureGeoJson.features.every((feature) => feature.geometry.type === typeName)
+                else {
+                    typeName = featureGeoJson[0].geometry.type
+                    chkTypeAllFeature = featureGeoJson.every((feature) => feature.geometry.type === typeName)
+                }
 
                 if (chkTypeAllFeature) {
                     if (layerTitle === 'Annotations') {
@@ -183,18 +197,14 @@ const loadFeature = function (layerSelected) {
                         for (let i=0 ; i<layerSelected.features.length ; i++) {
                             for (let j=0 ; j<layerSelected.features[i].features.length ; j++) {
                                 features.push(layerSelected.features[i].features[j])
-                                console.log('layerSelected.features[i]', layerSelected.features[i])
-                                console.log('layerSelected.features[i].features.length', layerSelected.features[i].features.length)
                             }
                         }
-                        console.log('features', features)
                         featureGeoJson = featureCollection(features)
                         featureGeoJson.features.forEach((feature) => temp.push(feature.properties.id))
                         let result = turfBuffer(featureGeoJson, getState().buffer.radius, { units: getState().buffer.unitValue });
                         result.features.forEach((feature, i) => {
                             feature.id = 'buffered_' + temp[i]
                         })
-                        console.log('featureCollection', result)
                         resolve(result)
                     }
 
@@ -217,6 +227,7 @@ const loadFeature = function (layerSelected) {
                 dispatch(setLayer(-1))
                 dispatch(loading(false))
             }).catch((e) => {
+                console.log(e)
                 dispatch(fetchGeoJsonFailure('ERROR in IF layer have feature'))
                 dispatch(loading(false))
             })
@@ -241,7 +252,6 @@ const loadFeature = function (layerSelected) {
                 resolve(getFromAPI)
             })
 
-            layerTitle = layerSelected.title || layerSelected.name
             getFeature.then((featureColl) => {
                 let featureGeoJson = featureColl.data
                 let typeName = featureGeoJson.features[0].geometry.type

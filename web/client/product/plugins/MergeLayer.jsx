@@ -55,6 +55,44 @@ const getFeature = (layerSelected) => {
     })
 }
 
+// chkFeatTypeCondition คือ Check ว่า 2 layer type นี้สามารถ merge ได้หรือไม่ โดนเงื่อนไขอยู่ภายใน array นี้
+const chkFeatTypeCondition = (type1, type2) => {
+    console.log('type1, type2', type1.toLowerCase(), type2.toLowerCase())
+    let featTypeCondition = [
+        ['point', 'point'],
+        ['linestring', 'linestring'],
+        ['polygon', 'polygon'],
+        ['multilinestring', 'multilinestring'],
+        ['multipolygon', 'multipolygon'],
+
+        ['point', 'multipoint'],
+        ['multipoint', 'point'],
+
+        ['multilinestring', 'linestring'],
+        ['linestring', 'multilinestring'],
+
+        ['multipolygon', 'polygon'],
+        ['polygon', 'multipolygon'],
+    ]
+    for (let i = 0; i < featTypeCondition.length; i++) {
+        if (featTypeCondition[i][0] === type1?.toLowerCase() && featTypeCondition[i][1] === type2?.toLowerCase()) {
+            return true
+        }
+    }
+    return false
+}
+
+const spreadFeatures = (layerSelected) => { // for Annotation
+    let featuresArray = []
+    for (let i = 0; i < layerSelected.features.length; i++) {
+        for (let j = 0; j < layerSelected.features[i].features.length; j++) {
+            featuresArray.push(layerSelected.features[i].features[j])
+        }
+    }
+    console.log('spreadFeatures: ', featuresArray)
+    return featuresArray
+}
+
 let layerTitle1 = ''
 let layerTitle2 = ''
 const loadFeature = function (layerSelected1, layerSelected2) {
@@ -75,42 +113,22 @@ const loadFeature = function (layerSelected1, layerSelected2) {
         }
     }
     return (dispatch) => {
-        // chkFeatTypeCondition คือ Check ว่า 2 layer type นี้สามารถ merge ได้ภายใน array นี้
-        const chkFeatTypeCondition = (type1, type2) => {
-            let featTypeCondition = [
-                ['point', 'point'],
-                ['linestring', 'linestring'],
-                ['polygon', 'polygon'],
-                ['multilinestring', 'multilinestring'],
-                ['multipolygon', 'multipolygon'],
-
-                ['multilinestring', 'linestring'],
-                ['linestring', 'multilinestring'],
-
-                ['multipolygon', 'polygon'],
-                ['polygon', 'multipolygon'],
-            ]
-            for (let i = 0; i < featTypeCondition.length; i++) {
-                if (featTypeCondition[i][0] === type1.toLowerCase() && featTypeCondition[i][1] === type2.toLowerCase()) {
-                    return true
-                }
-            }
-            return false
-        }
-        const handleMerge = (canMerge, features1, features2, title) => {
+        const handleMerge = (canMerge, features1, features2) => {
             if (canMerge) {
                 console.log('features1', features1)
                 console.log('features2', features2)
                 let mergedFeatures = featureCollection(features1.concat(features2))
-                if (title === 'Annotations') {
-                    mergedFeatures.features.forEach((feature) => feature.id = 'merged_' + feature.properties.id || uuidv1())
-                } else {
-                    mergedFeatures.features.forEach((feature) => feature.id = 'merged_' + feature.id || uuidv1())
-                }
+                mergedFeatures.features.forEach((feature) => {
+                    if (feature.properties.id) {
+                        feature.id = 'merged_' + `${feature.properties.id || uuidv1()}`
+                    } else {
+                        feature.id = 'merged_' + `${feature.id || uuidv1()}`
+                    }
+                })
                 dispatch(mergeAsLayer(mergedFeatures))
                 dispatch(setLayer1(-1)); dispatch(setLayer2(-1))
                 dispatch(loading(false))
-
+        
             } else {
                 dispatch(fetchGeoJsonFailure(`\'${features1[0].geometry.type}\' - \'${features2[0].geometry.type}\' type can't be merged`))
                 dispatch(loading(false))
@@ -119,51 +137,61 @@ const loadFeature = function (layerSelected1, layerSelected2) {
 
         dispatch(loading(true))
         dispatch(fetchGeoJsonFailure(''))
-        // ทั้ง 2 layer มี feature อยู่ใน Client side แล้ว
         layerTitle1 = layerSelected1.title || layerSelected1.name
         layerTitle2 = layerSelected2.title || layerSelected2.name
+
+        // ทั้ง 2 layer มี feature อยู่ใน Client side แล้ว
         if (layerSelected1.features && layerSelected2.features) {
-            handleMerge(chkFeatTypeCondition(layerSelected1.features[0].geometry.type, layerSelected2.features[0].geometry.type),
-                layerSelected1.features,
-                layerSelected2.features)
+            let features1 = layerSelected1.features;
+            let features2 = layerSelected2.features;
+            if (layerTitle1 === 'Annotations') {
+                features1 = spreadFeatures(layerSelected1)
+            }
+            if (layerTitle2 === 'Annotations') {
+                features2 = spreadFeatures(layerSelected2)
+            }
+            console.log('features1, features2', features1, features2)
+            handleMerge(chkFeatTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
+                features1,
+                features2
+            )
 
             // layer ที่ 2 มี feature อยู่ใน Client side แล้ว
         } else if (!layerSelected1.features && layerSelected2.features) {
             let getFeature1 = getFeature(layerSelected1)
             getFeature1.then(featuresColl1 => {
-                handleMerge(chkFeatTypeCondition(featuresColl1.data.features[0].geometry.type, layerSelected2.features[0].geometry.type),
-                    featuresColl1.data.features,
-                    layerSelected2.features)
+                let features1 = featuresColl1.data.features;
+                let features2 = layerSelected2.features
+                if (layerTitle2 === 'Annotations') {
+                    features2 = spreadFeatures(layerSelected2)
+                }
+                handleMerge(chkFeatTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
+                    features1,
+                    features2,
+                )
             }).catch((e) => {
-                // ERROR in IF layer1 don't have feature
+                console.log(e)
                 dispatch(fetchGeoJsonFailure('ERROR in getFeature1'))
                 dispatch(loading(false))
             })
 
             // layer ที่ 1 มี feature อยู่ใน Client side แล้ว
         } else if (layerSelected1.features && !layerSelected2.features) {
-            let featuresArray = []
-            console.log('layerTitle1', layerTitle1)
-            if (layerTitle1 === 'Annotations') { // อาจไม่ได้มีแค่ Annotations
-                for (let i = 0; i < layerSelected1.features.length; i++) {
-                    for (let j = 0; j < layerSelected1.features[i].features.length; j++) {
-                        featuresArray.push(layerSelected1.features[i].features[j])
-                        console.log('layerSelected.features[i]', layerSelected1.features[i].features[j])
-                    }
-                }
-                console.log('features', featuresArray)
-            }
-            console.log('featuresArray[0].geometry.type', featuresArray[0].geometry.type)
             let getFeature2 = getFeature(layerSelected2)
+            console.log('layerSelected1.features', layerSelected1.features)
+            console.log('layerTitle1', layerTitle1)
             getFeature2.then(featuresColl2 => {
-                console.log('featuresArray[0].geometry.type', featuresArray[0].geometry.type)
-                handleMerge(chkFeatTypeCondition(featuresArray[0].geometry.type, featuresColl2.data.features[0].geometry.type),
-                    featuresArray,
-                    featuresColl2.data.features,
-                    layerTitle1
+                let features1 = layerSelected1.features;
+                let features2 = featuresColl2.data.features
+                if (layerTitle1 === 'Annotations') {
+                    features1 = spreadFeatures(layerSelected1)
+                }
+                handleMerge(chkFeatTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
+                    features1,
+                    features2,
                 )
             }).catch((e) => {
-                // ERROR in IF layer2 don't have feature
+                console.log(e)
                 dispatch(fetchGeoJsonFailure('ERROR in getFeature2'))
                 dispatch(loading(false))
             })
@@ -172,12 +200,16 @@ const loadFeature = function (layerSelected1, layerSelected2) {
         } else {
             let getFeature1 = getFeature(layerSelected1)
             let getFeature2 = getFeature(layerSelected2)
-            Promise.all([getFeature1, getFeature2]).then(value => {
-                handleMerge(chkFeatTypeCondition(value[0].data.features[0].geometry.type, value[1].data.features[0].geometry.type),
-                    value[0].data.features,
-                    value[1].data.features)
+            Promise.all([getFeature1, getFeature2]).then(featuresColls => {
+                let features1 = featuresColls[0].data.features;
+                let features2 = featuresColls[1].data.features
+                console.log('features1, features2', features1, features2)
+                handleMerge(chkFeatTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
+                    features1,
+                    features2
+                )
             }).catch((e) => {
-                // ERROR in IF both don't have feature
+                console.log(e)
                 dispatch(fetchGeoJsonFailure('ERROR in Promise.all'))
                 dispatch(loading(false))
             })
