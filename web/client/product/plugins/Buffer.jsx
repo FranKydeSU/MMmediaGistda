@@ -177,20 +177,20 @@ const loadFeature = function (layerSelected) {
             new Promise((resolve, reject) => {
                 let featureGeoJson = layerSelected.features;
                 let temp = [];
-                let chkTypeAllFeature;
+                let checkTypeAllFeatures;
                 let typeName;
                 if (layerTitle === 'Annotations') { // อาจไม่ได้มีแค่ Annotations
                     let featureGeoJson = spreadFeatures(layerSelected)
                     typeName = featureGeoJson[0].geometry.type
-                    chkTypeAllFeature = featureGeoJson.every((feature) => feature.geometry.type === typeName)
+                    checkTypeAllFeatures = featureGeoJson.every((feature) => feature.geometry.type === typeName)
                     console.log('featuresCollOfAnnotation', featureGeoJson)
                 }
                 else {
                     typeName = featureGeoJson[0].geometry.type
-                    chkTypeAllFeature = featureGeoJson.every((feature) => feature.geometry.type === typeName)
+                    checkTypeAllFeatures = featureGeoJson.every((feature) => feature.geometry.type === typeName)
                 }
 
-                if (chkTypeAllFeature) {
+                if (checkTypeAllFeatures) {
                     if (layerTitle === 'Annotations') {
                         let features = []
                         console.log('ENTER Annotation')
@@ -255,8 +255,8 @@ const loadFeature = function (layerSelected) {
             getFeature.then((featureColl) => {
                 let featureGeoJson = featureColl.data
                 let typeName = featureGeoJson.features[0].geometry.type
-                let chkTypeAllFeature = featureGeoJson.features.every((feature) => feature.geometry.type === typeName)
-                if (chkTypeAllFeature) {
+                let checkTypeAllFeatures = featureGeoJson.features.every((feature) => feature.geometry.type === typeName)
+                if (checkTypeAllFeatures) {
                     new Promise((resolve, reject) => {
                         console.log('featureGeoJson', featureGeoJson)
                         let temp = []
