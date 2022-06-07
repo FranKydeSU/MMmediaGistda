@@ -1,76 +1,88 @@
-import PropTypes from 'prop-types'
-import React from 'react'
-import { connect } from 'react-redux'
+import PropTypes from 'prop-types';
+import React from 'react';
+import { connect } from 'react-redux';
 import { createControlEnabledSelector } from '../../selectors/controls';
 import { createSelector } from 'reselect';
 import assign from 'object-assign';
 import { get } from 'lodash';
 import { setControlProperty, toggleControl } from "../../actions/controls";
-import turfBuffer from '@turf/buffer'
+import turfBuffer from '@turf/buffer';
 import Rx from 'rxjs';
 import axios from '../../libs/ajax';
-import { addLayer } from '../../actions/layers'
-import { featureCollection } from '@turf/helpers'
+import { addLayer } from '../../actions/layers';
+import { featureCollection } from '@turf/helpers';
 import uuidv1 from 'uuid/v1';
 
 import Dialog from '../../components/misc/Dialog';
 import { DropdownList } from 'react-widgets';
 import { Col, Glyphicon, Row } from 'react-bootstrap';
-import { groupsSelector } from '../../selectors/layers'
-import LayerSelector from './buffer/LayerSelector'
+import { groupsSelector } from '../../selectors/layers';
+import LayerSelector from './buffer/LayerSelector';
 
 import { toCQLFilter } from '../../../client/utils/FilterUtils';
 
 createControlEnabledSelector("buffer");
 
-const bufferState = (state) => get(state, 'controls.buffer.enabled')
+const bufferSelector = (state) => get(state, 'controls.buffer.enabled');
 
-const toggleBufferTool = toggleControl.bind(null, "buffer", null);
+// const toggleBufferTool = toggleControl.bind(null, "buffer", null);
+const toggleBufferTool = () => {
+    return {
+        type: TOGGLE_CONTROL,
+        control: 'buffer',
+        property: null,
+        layerSelected: {},
+        layerIndex: -1,
+        loading: false
+    };
+};
 
 const layerNodesExtracter = (groups) => {
-    const layerNode = []
+    const layerNode = [];
     groups.map(groupNode => {
-        layerNode.push(...groupNode.nodes)
+        layerNode.push(...groupNode.nodes);
     })
-    return layerNode
-}
+    return layerNode;
+};
 
-const BUFFER_SET_LAYER = "BUFFER_SET_LAYER"
-const BUFFER_SET_RADIUS = "BUFFER:SET_RADIUS"
-const BUFFER_SET_UNIT = "BUFFER_SET_UNIT"
-const BUFFER_DO_BUFFER = "BUFFER_DO_BUFFER"
-const BUFFER_ADD_AS_LAYER = "BUFFER_ADD_AS_LAYER"
-const BUFFER_FEATURE_LOADED = "BUFFER_FEATURE_LOADED"
-const BUFFER_SET_LOADING = "BUFFER_SET_LOADING"
-const BUFFER_FETCH_FAILURE = "BUFFER:FETCH_FAILURE"
+const BUFFER_SET_LAYER = "BUFFER_SET_LAYER";
+const BUFFER_SET_RADIUS = "BUFFER:SET_RADIUS";
+const BUFFER_SET_UNIT = "BUFFER_SET_UNIT";
+const BUFFER_DO_BUFFER = "BUFFER_DO_BUFFER";
+const BUFFER_ADD_AS_LAYER = "BUFFER_ADD_AS_LAYER";
+const BUFFER_FEATURE_LOADED = "BUFFER_FEATURE_LOADED";
+const BUFFER_SET_LOADING = "BUFFER_SET_LOADING";
+const BUFFER_FETCH_FAILURE = "BUFFER:FETCH_FAILURE";
+// ค่าพิื้นฐานที่เรียกใช้คือ TOGGLE_CONTROL -> /reducers/controls.js
+export const TOGGLE_CONTROL = 'TOGGLE_CONTROL';
 
 const setLayer = function (idx) {
     return {
         type: BUFFER_SET_LAYER,
         index: idx
-    }
-}
+    };
+};
 
 const setRadius = function (radius) {
     return {
         type: BUFFER_SET_RADIUS,
         radius
-    }
-}
+    };
+};
 
 const setUnit = function (unit) {
     return {
         type: BUFFER_SET_UNIT,
         unitValue: unit
-    }
-}
+    };
+};
 
 const doBuffer = function (layerSelected) {
     return {
         type: BUFFER_DO_BUFFER,
         layerSelected,
-    }
-}
+    };
+};
 
 const addAsLayer = function (bufferedFtCollection) {
     console.log('addAsLayer Action', bufferedFtCollection)
@@ -78,22 +90,22 @@ const addAsLayer = function (bufferedFtCollection) {
         type: BUFFER_ADD_AS_LAYER,
         bufferedFtCollection
     };
-}
+};
 
 const loading = function (isLoading) {
     return {
         type: BUFFER_SET_LOADING,
         isLoading
-    }
-}
+    };
+};
 
 const fetchGeoJsonFailure = function (error) {
     console.log('fetchGeoJsonFailure', error)
     return {
         type: BUFFER_FETCH_FAILURE,
         error
-    }
-}
+    };
+};
 
 const selector = (state) => {
     return {
@@ -112,165 +124,168 @@ function bufferReducer(state = defaultState, action) {
         case BUFFER_SET_LAYER: {
             return assign({}, state, {
                 layerIndex: action.index
-            })
-        }
+            });
+        };
         case BUFFER_SET_UNIT: {
             return assign({}, state, {
                 unitValue: action.unitValue
-            })
-        }
+            });
+        };
         case BUFFER_SET_RADIUS: {
             return assign({}, state, {
                 radius: action.radius
-            })
-        }
+            });
+        };
         case BUFFER_FEATURE_LOADED: {
             return assign({}, state, {
                 featuresSelected: action.featuresSelected,
                 bufferedFeatures: action.bufferedFeatures
-            })
-        }
+            });
+        };
         case BUFFER_SET_LOADING: {
             return assign({}, state, {
                 loading: action.isLoading
-            })
-        }
+            });
+        };
         case BUFFER_FETCH_FAILURE: {
             return assign({}, state, {
                 error: action.error
-            })
-        }
+            });
+        };
+        case TOGGLE_CONTROL: {
+            return assign({}, state, {
+                layerSelected: action.layerSelected,
+                layerIndex: action.layerIndex,
+                loading: action.loading
+            });
+        };
         default:
-            return state
-    }
-}
+            return state;
+    };
+};
 
+// เพื่อกระจาย features ออกจาก features array ถ้าเป็น Annotation <- อาจมีอย่างอื่นด้วย เช่น Measurement
 const spreadFeatures = (layerSelected) => { // for Annotation
-    let featuresArray = []
+    let featuresArray = [];
     for (let i = 0; i < layerSelected.features.length; i++) {
         for (let j = 0; j < layerSelected.features[i].features.length; j++) {
-            featuresArray.push(layerSelected.features[i].features[j])
+            featuresArray.push(layerSelected.features[i].features[j]);
         }
     }
-    console.log('spreadFeatures: ', featuresArray)
-    return featuresArray
-}
+    console.log('spreadFeatures: ', featuresArray);
+    return featuresArray;
+};
 
 let layerTitle = ''
 const loadFeature = function (layerSelected) {
     if (!layerSelected) {
         return (dispatch) => {
-            dispatch(fetchGeoJsonFailure('Please select layers.'))
+            dispatch(fetchGeoJsonFailure('Please select layers.'));
         }
     }
     return (dispatch, getState) => {
-        console.log('layerSelected', layerSelected)
-        dispatch(loading(true))
-        dispatch(fetchGeoJsonFailure(''))
-        layerTitle = layerSelected.title || layerSelected.name
+        console.log('layerSelected', layerSelected);
+        dispatch(loading(true));
+        dispatch(fetchGeoJsonFailure(''));
+        layerTitle = layerSelected.title || layerSelected.name;
 
         // ถ้า layer นี้มี features ใน Client Side
         if (layerSelected.features) {
-            console.log('Enter IF layerSelected.features', layerSelected)
-            console.log('layerTitle', layerTitle)
+            console.log('Enter IF layerSelected.features', layerSelected.features);
+            console.log('layerTitle', layerTitle);
 
             new Promise((resolve, reject) => {
-                let featureGeoJson = layerSelected.features;
-                let temp = [];
-                let checkTypeAllFeatures;
+                let featuresGeoJson;
                 let typeName;
+                let checkAllFeaturesType;
+                let featuresIdTemp = [];
+                // if นี้เพื่อ checkAllFeaturesType
                 if (layerTitle === 'Annotations') { // อาจไม่ได้มีแค่ Annotations
-                    let featureGeoJson = spreadFeatures(layerSelected)
-                    typeName = featureGeoJson[0].geometry.type
-                    checkTypeAllFeatures = featureGeoJson.every((feature) => feature.geometry.type === typeName)
-                    console.log('featuresCollOfAnnotation', featureGeoJson)
-                }
-                else {
-                    typeName = featureGeoJson[0].geometry.type
-                    checkTypeAllFeatures = featureGeoJson.every((feature) => feature.geometry.type === typeName)
-                }
-
-                if (checkTypeAllFeatures) {
-                    if (layerTitle === 'Annotations') {
-                        let features = []
-                        console.log('ENTER Annotation')
-                        for (let i=0 ; i<layerSelected.features.length ; i++) {
-                            for (let j=0 ; j<layerSelected.features[i].features.length ; j++) {
-                                features.push(layerSelected.features[i].features[j])
-                            }
-                        }
-                        featureGeoJson = featureCollection(features)
-                        featureGeoJson.features.forEach((feature) => temp.push(feature.properties.id))
-                        let result = turfBuffer(featureGeoJson, getState().buffer.radius, { units: getState().buffer.unitValue });
-                        result.features.forEach((feature, i) => {
-                            feature.id = 'buffered_' + temp[i]
-                        })
-                        resolve(result)
-                    }
-
-                    else {
-                        featureGeoJson = featureCollection(layerSelected.features)
-                        featureGeoJson.features.forEach((feature) => temp.push(feature.id))
-                        let result = turfBuffer(featureGeoJson, getState().buffer.radius, { units: getState().buffer.unitValue });
-                        result.features.forEach((feature, i) => feature.id = 'buffered_' + temp[i])
-                        resolve(result)
-                    }
+                    featuresGeoJson = spreadFeatures(layerSelected)
+                    typeName = featuresGeoJson[0].geometry.type
+                    checkAllFeaturesType = featuresGeoJson.every((feature) => feature.geometry.type === typeName)
                 } else {
-                    dispatch(fetchGeoJsonFailure('All feature must be same type'))
-                    dispatch(loading(false))
+                    featuresGeoJson = layerSelected.features;
+                    typeName = featuresGeoJson[0].geometry.type;
+                    checkAllFeaturesType = featuresGeoJson.every((feature) => feature.geometry.type === typeName);
                 }
-                console.log('featureCollection', featureGeoJson)
-                console.log('temp', temp)
+
+                if (checkAllFeaturesType) {
+                    let featuresCollectionGeoJson = featureCollection(featuresGeoJson);
+                    featuresCollectionGeoJson.features.forEach((feature) => {
+                        if (feature.id) {
+                            featuresIdTemp.push(feature.id);
+                        } else if (feature.properties.id) { // For Annotation or etc.
+                            featuresIdTemp.push(feature.properties.id);
+                        }
+                    })
+                    let result = turfBuffer(featuresCollectionGeoJson, getState().buffer.radius, { units: getState().buffer.unitValue });
+                    result.features.forEach((feature, i) => {
+                        feature.id = 'buffered_' + featuresIdTemp[i];
+                        if (feature.properties.id) {
+                            feature.properties.id = 'buffered_' + featuresIdTemp[i];
+                        }
+                    })
+                    resolve(result);
+                } else {
+                    dispatch(fetchGeoJsonFailure('All feature must be same type'));
+                    dispatch(loading(false));
+                }
             }).then(bufferedFeatures => {
-                console.log('bufferedLayer after Promise in if: ', bufferedFeatures)
-                dispatch(addAsLayer(bufferedFeatures))
-                dispatch(setLayer(-1))
-                dispatch(loading(false))
+                console.log('bufferedLayer after Promise in if: ', bufferedFeatures);
+                dispatch(addAsLayer(bufferedFeatures));
+                dispatch(setLayer(-1));
+                dispatch(loading(false));
             }).catch((e) => {
-                console.log(e)
-                dispatch(fetchGeoJsonFailure('ERROR in IF layer have feature'))
-                dispatch(loading(false))
+                console.log(e);
+                dispatch(fetchGeoJsonFailure('ERROR in IF layer have feature'));
+                dispatch(loading(false));
             })
 
         } else {
             const DEFAULT_API = 'https://geonode.longdo.com/geoserver/wfs';
-            let getFeature = new Promise((resolve, reject) => {
+            new Promise((resolve, reject) => {
                 let params = {
                     service: 'WFS',
                     version: layerSelected.version,
                     request: 'GetFeature',
                     typeName: layerSelected.name,
                     outputFormat: 'application/json',
-                }
+                };
                 // สำหรับ layer ที่มีการ filter จะมี layerFilter อยู่ใน obj
                 if (layerSelected.layerFilter) {
                     const cql_filter = toCQLFilter(layerSelected?.layerFilter);
-                    console.log('cql_filter', cql_filter)
-                    params.cql_filter = cql_filter
+                    console.log('cql_filter', cql_filter);
+                    params.cql_filter = cql_filter;
                 }
-                let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`, { params })
-                resolve(getFromAPI)
-            })
-
-            getFeature.then((featureColl) => {
-                let featureGeoJson = featureColl.data
-                let typeName = featureGeoJson.features[0].geometry.type
-                let checkTypeAllFeatures = featureGeoJson.features.every((feature) => feature.geometry.type === typeName)
-                if (checkTypeAllFeatures) {
+                let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`, { params });
+                resolve(getFromAPI);
+            }).then((featuresCollectionGeoJSON) => {
+                let featuresCollectionData = featuresCollectionGeoJSON.data
+                console.log('featuresCollectionData', featuresCollectionData)
+                let typeName = featuresCollectionData.features[0].geometry.type
+                let checkAllFeaturesType = featuresCollectionData.features.every((feature) => feature.geometry.type === typeName)
+                if (checkAllFeaturesType) {
                     new Promise((resolve, reject) => {
-                        console.log('featureGeoJson', featureGeoJson)
-                        let temp = []
-                        featureGeoJson.features.forEach((feature) => temp.push(feature.id))
-                        console.log('temp', temp)
-                        let result = turfBuffer(featureGeoJson, getState().buffer.radius, { units: getState().buffer.unitValue });
-                        result.features.forEach((feature, i) => feature.id = 'buffered_ ' + temp[i])
+                        console.log('featuresCollectionGeoJson', featuresCollectionData)
+                        let featuresIdTemp = []
+                        featuresCollectionData.features.forEach((feature) => featuresIdTemp.push(feature.id))
+                        console.log('featuresIdTemp', featuresIdTemp)
+                        let result = turfBuffer(featuresCollectionData, getState().buffer.radius, { units: getState().buffer.unitValue });
+                        result.features.forEach((feature, i) => {
+                            feature.id = 'buffered_' + featuresIdTemp[i];
+                            if (feature.properties.id) {
+                                feature.properties.id = 'buffered_' + featuresIdTemp[i];
+                            }
+                        })
                         resolve(result)
                     }).then(bufferedFeatures => {
                         console.log('bufferedLayer after Promise: ', bufferedFeatures)
                         dispatch(addAsLayer(bufferedFeatures))
                         dispatch(setLayer(-1))
                         dispatch(loading(false))
-                    }).catch(() => {
+                    }).catch((err) => {
+                        console.log(err);
                         dispatch(fetchGeoJsonFailure('ERROR in Turf'))
                         dispatch(loading(false))
                     })
@@ -286,7 +301,7 @@ const loadFeature = function (layerSelected) {
     }
 }
 
-// epic ที่ไว้ดึง featureCollection จาก services โดย loadFeature function
+// epic ที่ไว้ดึง featuresCollection จาก services โดย loadFeature function
 const doBufferEpic = (action$, { getState = () => { } }) =>
     action$.ofType(BUFFER_DO_BUFFER)
         .filter(() => {
@@ -490,7 +505,7 @@ const buffer = connect(
         [
             selector,
             (state) => {
-                return bufferState(state);
+                return bufferSelector(state);
             },
             groupsSelector,
         ],
