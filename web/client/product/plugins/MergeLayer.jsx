@@ -97,7 +97,7 @@ const spreadFeatures = (layerSelected) => {
 
 let layerTitle1 = '';
 let layerTitle2 = '';
-let merged_id = 1;
+// let merged_id = 1;
 const loadFeature = function (layerSelected1, layerSelected2) {
     layerTitle1 = layerSelected1.title || layerSelected1.name || undefined;
     layerTitle2 = layerSelected2.title || layerSelected2.name || undefined;
@@ -129,22 +129,27 @@ const loadFeature = function (layerSelected1, layerSelected2) {
                     for (let j = 0; j < features2.length; j++) {
                         if (features1[i].id === features2[j].id) {
                             console.log(features1[i].id, features2[j].id)
-                            dispatch(fetchGeoJsonFailure('Both layers have same Annotation'));
+                            dispatch(fetchGeoJsonFailure('Some layer has been in Layer already.'));
                             dispatch(loading(false));
                             return;
                         }
                     }
                 }
 
-                let mergedFeatures = featureCollection(features1.concat(features2));
-                mergedFeatures.features.forEach((feature) => {
-                    feature.id = 'merged' + String(merged_id) + '_' + `${feature.id || uuidv1()}`;
-                    if (feature.properties.id) {// For Annotation or etc.
-                        feature.id = 'merged' + String(merged_id) + '_' + `${feature.properties.id || uuidv1()}`;
-                        feature.properties.id = 'merged' + String(merged_id) + '_' + `${feature.properties.id || uuidv1()}`;
-                    }
-                });
-                merged_id++;
+                // let mergedFeatures = featureCollection(features1.concat(features2));
+                let mergedFeatures = {
+                    type: 'FeatureCollection',
+                    features: [...features1,...features2]
+                }
+                console.log('mergedFeatures', mergedFeatures)
+                // mergedFeatures.features.forEach((feature) => {
+                //     feature.id = 'merged' + String(merged_id) + '_' + `${feature.id || uuidv1()}`;
+                //     if (feature.properties.id) {// For Annotation or etc.
+                //         feature.id = 'merged' + String(merged_id) + '_' + `${feature.properties.id || uuidv1()}`;
+                //         feature.properties.id = 'merged' + String(merged_id) + '_' + `${feature.properties.id || uuidv1()}`;
+                //     }
+                // });
+                // merged_id++;
                 dispatch(mergeAsLayer(mergedFeatures));
                 dispatch(setLayer1(-1)); dispatch(setLayer2(-1));
                 dispatch(loading(false));
