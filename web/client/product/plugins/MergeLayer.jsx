@@ -85,12 +85,14 @@ const checkFeaturesTypeCondition = (type1, type2) => {
 
 // เพื่อกระจาย features ออกจาก features array ถ้าเป็น Annotation <- อาจมีอย่างอื่นด้วย เช่น Measurement
 const spreadFeatures = (layerSelected) => {
+    var newGeojson = JSON.parse( JSON.stringify(layerSelected) )
     let featuresArray = [];
-    for (let i = 0; i < layerSelected.features.length; i++) {
-        for (let j = 0; j < layerSelected.features[i].features.length; j++) {
-            featuresArray.push(layerSelected.features[i].features[j])
+    for (let i = 0; i < newGeojson.features.length; i++) {
+        for (let j = 0; j < newGeojson.features[i].features.length; j++) {
+            featuresArray.push(newGeojson.features[i].features[j])
         }
     }
+    featuresArray.forEach((feature) => delete feature.style)
     console.log('spreadFeatures: ', featuresArray);
     return featuresArray;
 }
@@ -139,7 +141,7 @@ const loadFeature = function (layerSelected1, layerSelected2) {
                 // let mergedFeatures = featureCollection(features1.concat(features2));
                 let mergedFeatures = {
                     type: 'FeatureCollection',
-                    features: [...features1,...features2]
+                    features: [...features1, ...features2]
                 }
                 console.log('mergedFeatures', mergedFeatures)
                 // mergedFeatures.features.forEach((feature) => {
@@ -150,6 +152,11 @@ const loadFeature = function (layerSelected1, layerSelected2) {
                 //     }
                 // });
                 // merged_id++;
+                // mergedFeatures.features.forEach((feature)=>{
+                //     if (feature.style) {
+                //         delete  feature.style
+                //     }
+                // })
                 dispatch(mergeAsLayer(mergedFeatures));
                 dispatch(setLayer1(-1)); dispatch(setLayer2(-1));
                 dispatch(loading(false));
@@ -199,11 +206,12 @@ const loadFeature = function (layerSelected1, layerSelected2) {
 
             // layer ที่ 1 มี feature อยู่ใน Client side แล้ว
         } else if (layerSelected1.features && !layerSelected2.features) {
+            console.log('Enter if 1 have features')
             getFeature(layerSelected2).then(featuresCollectionGeoJson2 => {
-                let features1 = layerSelected1.features;
+                let features1 = layerSelected1.features;;
                 let features2 = featuresCollectionGeoJson2.data.features;
                 if (layerTitle1 === 'Annotations') {
-                    features1 = spreadFeatures(layerSelected1);
+                    features1 = spreadFeatures({...layerSelected1});
                 }
                 console.log('features1, features2', features1, features2);
                 handleMerge(checkFeaturesTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
