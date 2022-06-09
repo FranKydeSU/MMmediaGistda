@@ -197,6 +197,18 @@ class Toolbar extends React.Component {
             layerMetadataPanelTitle={this.props.text.layerMetadataPanelTitle} />);
         return this.props.activateTool.activateToolsContainer ? (
             <ButtonGroup>
+                {/* FRANKY */}
+                {this.props.activateTool.activateDownloadTool && status === 'LAYER' && (this.props.selectedLayers[0].name === 'BufferedLayer' || this.props.selectedLayers[0].name === "MergeLayer") && !this.props.settings.expanded && !this.props.layerMetadata.expanded ?
+                    <OverlayTrigger
+                        key="downloadTool"
+                        placement="top"
+                        overlay={<Tooltip id="toc-tooltip-downloadTool">{this.props.text.downloadToolTooltip}</Tooltip>}>
+                        <Button bsStyle={this.props.layerdownload.expanded ? "success" : "primary"} className="square-button-md" onClick={this.downloadGeoJson}>
+                            <Glyphicon glyph="download" />
+                        </Button>
+                    </OverlayTrigger>
+                    : null}
+                {/*  */}
                 {this.props.activateTool.activateLayerInfoTool && status === 'DESELECT' ?
                     <OverlayTrigger
                         key="layerInfo"
@@ -361,6 +373,21 @@ class Toolbar extends React.Component {
             name: this.props.selectedLayers[0].name,
             id: this.props.selectedLayers[0].id
         });
+    }
+    // FRANKY
+    downloadGeoJson = () => {
+        let data = {
+            type: 'FeatureCollection',
+            features: [...this.props.selectedLayers[0].features]
+        }
+        console.log('mergeFt', data)
+        const jsonString = `data:text/json;chatset=utf-8,${encodeURIComponent(
+            JSON.stringify(data)
+        )}`;
+        const link = document.createElement("a");
+        link.href = jsonString;
+        link.download = `${this.props.selectedLayers[0].title}.json`;
+        link.click();
     }
 
     checkBbox = () => {
