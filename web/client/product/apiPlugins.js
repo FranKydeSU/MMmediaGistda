@@ -30,7 +30,8 @@ export default {
         FullScreenPlugin: require('../plugins/FullScreen').default,
         MousePosition: require('../plugins/MousePosition').default,
         BufferPlugin: require('./plugins/Buffer').default, // FRANKY
-        MergeLayerPlugin: require('./plugins/MergeLayer').default
+        MergeLayerPlugin: require('./plugins/MergeLayer').default, // FRANKY
+        ExportGeoJsonPlugin: require('./plugins/ExportGeoJson').default, // FRANKY
     },
     requires: {
         ReactSwipe: require('react-swipeable-views').default,

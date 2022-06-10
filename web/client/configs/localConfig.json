@@ -518,7 +518,8 @@
             "FetchLayers",
             "Routing",
             "Buffer",
-            "MergeLayer"
+            "MergeLayer",
+            "ExportGeoJson"
         ],
         "embedded": ["Details", {
                 "name": "Map",

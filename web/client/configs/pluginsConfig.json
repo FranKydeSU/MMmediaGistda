@@ -59,13 +59,15 @@
         "FeatureEditor",
         "FilterLayer",
         "AddGroup",
-        "Swipe"
+        "Swipe",
+        "ExportGeoJson"
       ],
       "autoEnableChildren": [
         "TOCItemsSettings",
         "FeatureEditor",
         "FilterLayer",
-        "AddGroup"
+        "AddGroup",
+        "ExportGeoJson"
       ],
       "dependencies": [
         "DrawerMenu"
@@ -314,6 +316,12 @@
       "dependencies": [
         "BurgerMenu"
       ]
+    },
+    {
+      "name": "ExportGeoJson",
+      "glyph": "add-folder",
+      "title": "plugins.AddGroup.title",
+      "description": "plugins.AddGroup.description"
     },
     {
       "name": "Print",

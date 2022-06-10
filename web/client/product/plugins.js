@@ -28,7 +28,8 @@ export default {
         RoutingPlugin: require('./plugins/Routing').default,
         FetchLayerPlugin: require('./plugins/FetchLayers').default,
         BufferPlugin: require('./plugins/Buffer').default, // FRANKY
-        MergeLayerPlugin: require('./plugins/MergeLayer').default,
+        MergeLayerPlugin: require('./plugins/MergeLayer').default, // FRANKY
+        ExportGeoJsonPlugin: require('./plugins/ExportGeoJson').default, // FRANKY
 
         // framework plugins
         AddGroupPlugin: require('../plugins/AddGroup').default,
