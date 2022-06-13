@@ -497,6 +497,7 @@
             "toolFeaturesGridTooltip": "Open attribute table",
             "layerFilterTooltip": "Filter layer",
             "toolDownloadTooltip": "Export layer data",
+            "toolExportGeoJsonTooltip": "Download GeoJson",
             "noFilteredResults": "No results",
             "filterPlaceholder": "Filter layers",
             "clearFilter": "Clear filter",
@@ -3397,6 +3398,28 @@
             "noDataForPosition": "no street-view data for this position",
             "unknownError": "unknown error, see console"
           }
+        },
+        "bufferPlugin": {
+            "title": "Buffer",
+            "loading": "Loading...",
+            "layerLabel": "Layer",
+            "bufferLabel": "Buffer size",
+            "button": "Buffer",
+            "resetButton": "Clear",
+            "noLayer": "Please select layer",
+            "radiusMoreThan0": "Buffer size should more than 0",
+            "notSameType": "All feature must be same type",
+            "turfError": "ERROR in Turf",
+            "errorHaveLayer": "ERROR in IF layer have feature",
+            "errorFetch": "ERROR in getFeature"
+        },
+        "mergeLayerPlugin": {
+            "title": "Merge",
+            "layerLabel1": "Layer 1",
+            "layerLabel2": "Layer 2",
+            "loading": "Loading...",
+            "button": "Merge",
+            "resetButton": "Clear"
         }
     }
 }

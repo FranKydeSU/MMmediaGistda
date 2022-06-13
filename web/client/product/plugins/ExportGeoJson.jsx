@@ -5,6 +5,7 @@ import React from 'react';
 import { Glyphicon, Tooltip } from 'react-bootstrap';
 import Button from '../../components/misc/Button';
 import OverlayTrigger from '../../components/misc/OverlayTrigger';
+import Message from "../../components/I18N/Message";
 
 
 const ExportGeoJson = () => {
@@ -18,7 +19,7 @@ class ExportGeoJsonButton extends React.Component {
             type: 'FeatureCollection',
             features: [...this.props.selectedLayers[0].features]
         }
-        console.log('mergeFt', data)
+        // console.log('download data', data)
         const jsonString = `data:text/json;chatset=utf-8,${encodeURIComponent(
             JSON.stringify(data)
         )}`;
@@ -31,24 +32,17 @@ class ExportGeoJsonButton extends React.Component {
     render() {
         return (
             <>
-                {/* {this.props.activateTool.activateDownloadTool && status === 'LAYER' && (this.props.selectedLayers[0].name === 'BufferedLayer' || this.props.selectedLayers[0].name === "MergeLayer") && !this.props.settings.expanded && !this.props.layerMetadata.expanded ?
-                <OverlayTrigger
-                    key="downloadTool"
+                {
+                    (this.props.selectedLayers[0].name === 'BufferedLayer' || this.props.selectedLayers[0].name === "MergeLayer") && !this.props.settings.expanded && !this.props.layerMetadata.expanded ?
+                    <OverlayTrigger
+                    key="exportGeoJsonTool"
                     placement="top"
-                    overlay={<Tooltip id="toc-tooltip-downloadTool">{this.props.text.downloadToolTooltip}</Tooltip>}>
+                    overlay={<Tooltip id="toc-tooltip-downloadTool"><Message msgId="toc.toolExportGeoJsonTooltip" /></Tooltip>}>
                     <Button bsStyle={this.props.layerdownload.expanded ? "success" : "primary"} className="square-button-md" onClick={this.downloadGeoJson}>
                         <Glyphicon glyph="download" />
                     </Button>
                 </OverlayTrigger>
-                : null} */}
-                <OverlayTrigger
-                    key="downloadTool"
-                    placement="top"
-                    overlay={<Tooltip id="toc-tooltip-downloadTool">{this.props.text.downloadToolTooltip}</Tooltip>}>
-                    <Button className="square-button-md" onClick={this.downloadGeoJson}>
-                        <Glyphicon glyph="download" />
-                    </Button>
-                </OverlayTrigger>
+                : null   }
             </>
         )
     }
@@ -67,7 +61,7 @@ export default createPlugin('ExportGeoJson', {
     containers: {
         TOC: {
             doNotHide: true,
-            name: "ExportGeoJson", // this works only if AddGroup is one of the plugins internally supported by TOC.
+            name: "ExportGeoJson",
             target: "toolbar",
             selector: ({ status }) => status === 'LAYER',
             Component: ConnectedExportGeoJsonButton

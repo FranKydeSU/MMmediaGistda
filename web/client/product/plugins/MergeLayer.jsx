@@ -16,6 +16,7 @@ import Dialog from '../../components/misc/Dialog';
 import LayerSelector from './mergelayer/LayerSelector';
 import { groupsSelector, layersSelector } from '../../selectors/layers';
 import { addLayer } from '../../actions/layers';
+import Message from '../../components/I18N/Message';
 
 import { toCQLFilter } from '../../../client/utils/FilterUtils';
 
@@ -83,7 +84,7 @@ const checkFeaturesTypeCondition = (type1, type2) => {
     return false;
 }
 
-// เพื่อกระจาย features ออกจาก features array ถ้าเป็น Annotation <- อาจมีอย่างอื่นด้วย เช่น Measurement
+// เพื่อกระจาย features ออกจาก features array ถ้าเป็น Annotation features <- อาจมีอย่างอื่นด้วย เช่น Measurement
 const spreadFeatures = (layerSelected) => {
     var newGeojson = JSON.parse(JSON.stringify(layerSelected))
     let featuresArray = [];
@@ -99,7 +100,6 @@ const spreadFeatures = (layerSelected) => {
 
 let layerTitle1 = '';
 let layerTitle2 = '';
-// let merged_id = 1;
 const loadFeature = function (layerSelected1, layerSelected2) {
     layerTitle1 = layerSelected1.title || layerSelected1.name || undefined;
     layerTitle2 = layerSelected2.title || layerSelected2.name || undefined;
@@ -143,7 +143,7 @@ const loadFeature = function (layerSelected1, layerSelected2) {
                     features: [...features1, ...features2]
                 }
                 console.log('mergedFeatures', mergedFeatures)
-                dispatch(loadMergedLayer(mergedFeatures))
+                dispatch(loadMergedLayer(mergedFeatures)) // ไม่จำเป็นอีกแล้ว
                 dispatch(mergeAsLayer(mergedFeatures));
                 dispatch(setLayer1(-1)); dispatch(setLayer2(-1));
                 dispatch(loading(false));
@@ -231,7 +231,7 @@ const loadFeature = function (layerSelected1, layerSelected2) {
         }
     };
 };
-
+// -------------------------------------Selector--------------------------------------
 const selector = (state) => {
     return {
         layerIndex1: state.mergelyr.layerIndex1,
@@ -241,7 +241,7 @@ const selector = (state) => {
         mergedLayer: state.mergelyr.mergedLayer
     };
 };
-
+// -------------------------------------Action--------------------------------------
 const MERGELYR_SET_LAYER_1 = "MERGELYR:SET_LAYER_1";
 const MERGELYR_SET_LAYER_2 = "MERGELYR:SET_LAYER_2";
 const MERGELYR_DO_MERGE = "MERGELYR:DO_MERGE";
@@ -295,7 +295,6 @@ const fetchGeoJsonFailure = function (error) {
     };
 };
 
-// const toggleMergeLyrTool = toggleControl.bind(null, "mergelyr", null);
 const toggleMergeLyrTool = function () {
     return {
         type: TOGGLE_CONTROL,
@@ -315,7 +314,7 @@ const loadMergedLayer = function (mergedLayer) {
         mergedLayer
     }
 }
-
+// -------------------------------------Reducer--------------------------------------
 function mergeLayerReducer(state = defaultState, action) {
     switch (action.type) {
         case MERGELYR_SET_LAYER_1: {
@@ -356,7 +355,7 @@ function mergeLayerReducer(state = defaultState, action) {
             return state;
     };
 };
-
+// -------------------------------------Epic--------------------------------------
 // epic ที่ไว้ดึง featureCollection จาก services โดย loadFeature function
 const doMergeEpic = (action$, { getState = () => { } }) =>
     action$.ofType(MERGELYR_DO_MERGE)
@@ -387,6 +386,7 @@ const mergeAsLayerEpic = (action$) =>
                 })
             );
         });
+// -------------------------------------------------------------------------------
 
 const defaultState = {
     layerIndex1: -1,
@@ -447,36 +447,24 @@ class MergeLayerComponent extends React.Component {
         this.props.onChangeLayer2(-1);
     };
 
-    onExportData = () => {
-        let data = this.props.mergedLayer
-        console.log('mergeFt', data)
-        const jsonString = `data:text/json;chatset=utf-8,${encodeURIComponent(
-            JSON.stringify(data)
-        )}`;
-        const link = document.createElement("a");
-        link.href = jsonString;
-        link.download = "data.json";
-
-        link.click();
-    };
-
     render() {
         return this.props.show ? (
             <Dialog Dialog id="measure-dialog" style={this?.dialogStyle} start={this?.start} >
+                {/* เอาไว้ debug ดู layer ทั้งหมด */}
                 {console.log('ALL_LAYERS: ', this.props.allLayers)}
                 <div key="header" role="header">
-                    <Glyphicon glyph="folder-open" />&nbsp;Merge
+                    <Glyphicon glyph="folder-open" />&nbsp;<Message msgId="mergeLayerPlugin.title" />
                     <button key="close" onClick={this.onClose} className="close"><Glyphicon glyph="1-close" /></button>
                 </div>
                 <div key="body" role="body">
-                    <p>Layer 1</p>
+                    <p><Message msgId="mergeLayerPlugin.layerLabel1" /></p>
                     <LayerSelector
                         responses={this.props.layersNode}
                         index={this.props.layerIndex1}
                         setIndex={this.onChangeLayer1}
                     ></LayerSelector>
                     <br />
-                    <p>Layer 2</p>
+                    <p><Message msgId="mergeLayerPlugin.layerLabel2" /></p>
                     <LayerSelector
                         responses={this.props.layersNode}
                         index={this.props.layerIndex2}
@@ -496,7 +484,7 @@ class MergeLayerComponent extends React.Component {
                                     style={{ minWidth: "100px" }}
                                     disabled
                                 >
-                                    loading...
+                                    <Message msgId="mergeLayerPlugin.loading" />
                                 </button>
                                 :
                                 <button
@@ -507,7 +495,7 @@ class MergeLayerComponent extends React.Component {
                                     // id="find-route"
                                     onClick={this.onDoMerge}
                                 >
-                                    Merge
+                                    <Message msgId="mergeLayerPlugin.button" />
                                 </button>
                         }
 
@@ -520,17 +508,7 @@ class MergeLayerComponent extends React.Component {
                             }}
                             onClick={this.onReset}
                         >
-                            Clear
-                        </button>
-
-                        <button
-                            key="mergelayer-export"
-                            className="btn btn-longdo-outline-info"
-                            style={{ minWidth: "100px" }}
-                            disabled={this.props.mergedLayer ? false : true}
-                            onClick={this.onExportData}
-                        >
-                            Export
+                            <Message msgId="mergeLayerPlugin.resetButton" />
                         </button>
 
                         <p style={{ color: "red" }}>{this.props.error}</p>

@@ -1,50 +1,235 @@
-import PropTypes from 'prop-types';
-import React from 'react';
-import { connect } from 'react-redux';
-import { createControlEnabledSelector } from '../../selectors/controls';
-import { createSelector } from 'reselect';
-import assign from 'object-assign';
-import { get } from 'lodash';
-import { setControlProperty, toggleControl } from "../../actions/controls";
-import turfBuffer from '@turf/buffer';
-import Rx from 'rxjs';
-import axios from '../../libs/ajax';
-import { addLayer } from '../../actions/layers';
-import { featureCollection } from '@turf/helpers';
-import uuidv1 from 'uuid/v1';
+import PropTypes from "prop-types";
+import React from "react";
+import { connect } from "react-redux";
+import { createControlEnabledSelector } from "../../selectors/controls";
+import { createSelector } from "reselect";
+import assign from "object-assign";
+import { get } from "lodash";
+import { setControlProperty } from "../../actions/controls";
+import turfBuffer from "@turf/buffer";
+import Rx from "rxjs";
+import axios from "../../libs/ajax";
+import { addLayer } from "../../actions/layers";
+import { featureCollection } from "@turf/helpers";
+import uuidv1 from "uuid/v1";
 
-import Dialog from '../../components/misc/Dialog';
-import { DropdownList } from 'react-widgets';
-import { Col, Glyphicon, Row } from 'react-bootstrap';
-import { groupsSelector } from '../../selectors/layers';
-import LayerSelector from './buffer/LayerSelector';
+import Dialog from "../../components/misc/Dialog";
+import { DropdownList } from "react-widgets";
+import { Col, Glyphicon, Row } from "react-bootstrap";
+import { groupsSelector } from "../../selectors/layers";
+import LayerSelector from "./buffer/LayerSelector";
+import Message from "../../components/I18N/Message";
 
-import { toCQLFilter } from '../../../client/utils/FilterUtils';
+import { toCQLFilter } from "../../../client/utils/FilterUtils";
 
 createControlEnabledSelector("buffer");
 
-const bufferSelector = (state) => get(state, 'controls.buffer.enabled');
-
-// const toggleBufferTool = toggleControl.bind(null, "buffer", null);
-const toggleBufferTool = () => {
-    return {
-        type: TOGGLE_CONTROL,
-        control: 'buffer',
-        property: null,
-        layerSelected: {},
-        layerIndex: -1,
-        loading: false
-    };
-};
+const bufferSelector = (state) => get(state, "controls.buffer.enabled");
 
 const layerNodesExtracter = (groups) => {
     const layerNode = [];
-    groups.map(groupNode => {
+    groups.map((groupNode) => {
         layerNode.push(...groupNode.nodes);
-    })
+    });
     return layerNode;
 };
 
+// เพื่อกระจาย features ออกจาก features array ถ้าเป็น Annotation features <- อาจมีอย่างอื่นด้วย เช่น Measurement
+const spreadFeatures = (layerSelected) => {
+    let featuresArray = [];
+    for (let i = 0; i < layerSelected.features.length; i++) {
+        for (let j = 0; j < layerSelected.features[i].features.length; j++) {
+            featuresArray.push(layerSelected.features[i].features[j]);
+        }
+    }
+    console.log("spreadFeatures: ", featuresArray);
+    return featuresArray;
+};
+
+let layerTitle = "";
+const loadFeature = function (layerSelected) {
+    if (!layerSelected) {
+        return (dispatch) => {
+            dispatch(fetchGeoJsonFailure(<Message msgId="bufferPlugin.noLayer" />));
+        };
+    }
+    return (dispatch, getState) => {
+        const handleUnit = (radius, unit) => {
+            if (radius <= 0) {
+                dispatch(fetchGeoJsonFailure(<Message msgId="bufferPlugin.radiusMoreThan0" />));
+                dispatch(loading(false));
+                return;
+            }
+            // Check Unit
+            switch (unit) {
+                case "meters":
+                    radius /= 1000;
+                    unit = "kilometers";
+                    break;
+                case "วา":
+                    radius /= 500;
+                    unit = "kilometers";
+                    break;
+                default:
+                    radius;
+                    unit;
+            }
+            return [radius, unit];
+        };
+
+        dispatch(loading(true));
+        layerTitle = layerSelected.title || layerSelected.name;
+
+        // ถ้า layer นี้มี features ใน Client Side
+        if (layerSelected.features) {
+            console.log("layerTitle", layerTitle);
+            // Promise for Turf
+            new Promise((resolve, reject) => {
+                // ส่วนนี้เพื่อหาค่า checkAllFeaturesType | อาจไม่ได้มีแค่ Annotations
+                let featuresGeoJson;
+                if (layerTitle === "Annotations")
+                    featuresGeoJson = spreadFeatures(layerSelected);
+                else
+                    featuresGeoJson = layerSelected.features;
+                let typeName = featuresGeoJson[0].geometry.type;
+                let checkAllFeaturesType = featuresGeoJson.every(
+                    (feature) => feature.geometry.type === typeName
+                );
+
+                if (checkAllFeaturesType) {
+                    let featuresCollectionGeoJson = featureCollection(featuresGeoJson);
+                    let radiusAndUnit = handleUnit(
+                        getState().buffer.radius,
+                        getState().buffer.unitValue
+                    );
+                    console.log("radius", radiusAndUnit[0]);
+                    console.log("unitValue", radiusAndUnit[1]);
+                    // เก็บ id เอาไว้ใน array เพราะถ้า Turf แล้ว id จะหาย
+                    let featuresIdTemp = [];
+                    featuresCollectionGeoJson.features.forEach((feature) => {
+                        if (feature.id)
+                            featuresIdTemp.push(feature.id);
+                        else if (feature.properties.id) // For Annotation or etc.
+                            featuresIdTemp.push(feature.properties.id);
+                    });
+                    let result = turfBuffer(
+                        featuresCollectionGeoJson,
+                        radiusAndUnit[0],
+                        { units: radiusAndUnit[1] }
+                    );
+                    // ใส่ id ที่อยู่ใน array กลับเข้าไป
+                    result.features.forEach((feature, i) => {
+                        feature.id = "buffered_" + featuresIdTemp[i];
+                        if (feature.properties.id) // For Annotation or etc.
+                            feature.properties.id = "buffered_" + featuresIdTemp[i];
+                    });
+                    resolve(result);
+                } else {
+                    dispatch(fetchGeoJsonFailure(<Message msgId="bufferPlugin.notSameType" />));
+                    dispatch(loading(false));
+                }
+            })
+                .then((bufferedFeatures) => {
+                    dispatch(addAsLayer(bufferedFeatures));
+                    dispatch(fetchGeoJsonFailure("succeed"));
+                    dispatch(setLayer(-1)); dispatch(loading(false));
+                })
+                .catch((e) => {
+                    console.log(e);
+                    dispatch(fetchGeoJsonFailure(<Message msgId="bufferPlugin.turfError" />));
+                    dispatch(loading(false));
+                });
+        } else { // ถ้าไม่มี features อยู่ใน layer ทำการ get
+            const DEFAULT_API = "https://geonode.longdo.com/geoserver/wfs";
+            // Promise for Turf
+            new Promise((resolve, reject) => {
+                let params = {
+                    service: "WFS",
+                    version: layerSelected.version,
+                    request: "GetFeature",
+                    typeName: layerSelected.name,
+                    outputFormat: "application/json",
+                };
+                // สำหรับ layer ที่มีการ filter จะมี layerFilter อยู่ใน obj
+                if (layerSelected.layerFilter) {
+                    const cql_filter = toCQLFilter(layerSelected?.layerFilter);
+                    console.log("cql_filter", cql_filter);
+                    params.cql_filter = cql_filter;
+                }
+                let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`, { params });
+                resolve(getFromAPI);
+            })
+                .then((featuresCollectionGeoJSON) => {
+                    let featuresCollectionData = featuresCollectionGeoJSON.data;
+                    console.log("featuresCollectionData", featuresCollectionData);
+                    let typeName = featuresCollectionData.features[0].geometry.type;
+                    // ส่วนนี้เพื่อหาค่า checkAllFeaturesType | อาจไม่ได้มีแค่ Annotations
+                    let checkAllFeaturesType = featuresCollectionData.features.every(
+                        (feature) => feature.geometry.type === typeName
+                    );
+                    if (checkAllFeaturesType) {
+                        new Promise((resolve, reject) => {
+                            let radiusAndUnit = handleUnit(
+                                getState().buffer.radius,
+                                getState().buffer.unitValue
+                            );
+                            console.log("radius", radiusAndUnit[0]);
+                            console.log("unitValue", radiusAndUnit[1]);
+                            // เก็บ id เอาไว้ใน array เพราะถ้า Turf แล้ว id จะหาย
+                            let featuresIdTemp = [];
+                            featuresCollectionData.features.forEach((feature) =>
+                                featuresIdTemp.push(feature.id)
+                            );
+                            let result = turfBuffer(
+                                featuresCollectionData,
+                                radiusAndUnit[0],
+                                { units: radiusAndUnit[1] }
+                            );
+                            // ใส่ id ที่อยู่ใน array กลับเข้าไป
+                            result.features.forEach((feature, i) => {
+                                feature.id = "buffered_" + featuresIdTemp[i];
+                                if (feature.properties.id)
+                                    feature.properties.id = "buffered_" + featuresIdTemp[i];
+                            });
+                            resolve(result);
+                        })
+                            .then((bufferedFeatures) => {
+                                console.log("bufferedLayer after Promise: ", bufferedFeatures);
+                                dispatch(addAsLayer(bufferedFeatures));
+                                dispatch(fetchGeoJsonFailure("succeed"));
+                                dispatch(setLayer(-1)); dispatch(loading(false));
+                            })
+                            .catch((e) => {
+                                console.log(e);
+                                dispatch(fetchGeoJsonFailure(<Message msgId="bufferPlugin.turfError" />));
+                                dispatch(loading(false));
+                            });
+                    } else {
+                        dispatch(fetchGeoJsonFailure(<Message msgId="bufferPlugin.notSameType" />));
+                        dispatch(loading(false));
+                    }
+                })
+                .catch((e) => {
+                    console.log(e);
+                    dispatch(loading(false));
+                    dispatch(fetchGeoJsonFailure(<Message msgId="bufferPlugin.errorFetch" />));
+                });
+        }
+    };
+};
+// -------------------------------------Selector--------------------------------------
+const selector = (state) => {
+    return {
+        layerIndex: state.buffer.layerIndex,
+        unitValue: state.buffer.unitValue,
+        radius: state.buffer.radius,
+        featuresSelected: state.buffer.featuresSelected,
+        bufferedFeatures: state.buffer.bufferedFeatures,
+        loading: state.buffer.loading,
+        error: state.buffer.error,
+    };
+};
+// -------------------------------------Action--------------------------------------
 const BUFFER_SET_LAYER = "BUFFER:SET_LAYER";
 const BUFFER_SET_RADIUS = "BUFFER:SET_RADIUS";
 const BUFFER_SET_UNIT = "BUFFER:SET_UNIT";
@@ -54,26 +239,26 @@ const BUFFER_FEATURE_LOADED = "BUFFER:FEATURE_LOADED";
 const BUFFER_SET_LOADING = "BUFFER:SET_LOADING";
 const BUFFER_FETCH_FAILURE = "BUFFER:FETCH_FAILURE";
 // ค่าพิื้นฐานที่เรียกใช้คือ TOGGLE_CONTROL -> /reducers/controls.js
-export const TOGGLE_CONTROL = 'TOGGLE_CONTROL';
+export const TOGGLE_CONTROL = "TOGGLE_CONTROL";
 
 const setLayer = function (idx) {
     return {
         type: BUFFER_SET_LAYER,
-        index: idx
+        index: idx,
     };
 };
 
 const setRadius = function (radius) {
     return {
         type: BUFFER_SET_RADIUS,
-        radius
+        radius,
     };
 };
 
 const setUnit = function (unit) {
     return {
         type: BUFFER_SET_UNIT,
-        unitValue: unit
+        unitValue: unit,
     };
 };
 
@@ -85,222 +270,87 @@ const doBuffer = function (layerSelected) {
 };
 
 const addAsLayer = function (bufferedFtCollection) {
-    console.log('addAsLayer Action', bufferedFtCollection)
+    console.log("add layer to panel", bufferedFtCollection);
     return {
         type: BUFFER_ADD_AS_LAYER,
-        bufferedFtCollection
+        bufferedFtCollection,
     };
 };
 
 const loading = function (isLoading) {
     return {
         type: BUFFER_SET_LOADING,
-        isLoading
+        isLoading,
     };
 };
 
 const fetchGeoJsonFailure = function (error) {
-    console.log('fetchGeoJsonFailure', error)
+    console.log("fetchGeoJsonFailure", error);
     return {
         type: BUFFER_FETCH_FAILURE,
-        error
+        error,
     };
 };
 
-const selector = (state) => {
+// const toggleBufferTool = toggleControl.bind(null, "buffer", null);
+const toggleBufferTool = () => {
     return {
-        layerIndex: state.buffer.layerIndex,
-        unitValue: state.buffer.unitValue,
-        radius: state.buffer.radius,
-        featuresSelected: state.buffer.featuresSelected,
-        bufferedFeatures: state.buffer.bufferedFeatures,
-        loading: state.buffer.loading,
-        error: state.buffer.error
+        type: TOGGLE_CONTROL,
+        control: "buffer",
+        property: null,
+        layerSelected: {},
+        layerIndex: -1,
+        loading: false,
+        error: ''
     };
 };
-
+// -------------------------------------Reducer--------------------------------------
 function bufferReducer(state = defaultState, action) {
     switch (action.type) {
         case BUFFER_SET_LAYER: {
             return assign({}, state, {
-                layerIndex: action.index
+                layerIndex: action.index,
             });
-        };
+        }
         case BUFFER_SET_UNIT: {
             return assign({}, state, {
-                unitValue: action.unitValue
+                unitValue: action.unitValue,
             });
-        };
+        }
         case BUFFER_SET_RADIUS: {
             return assign({}, state, {
-                radius: action.radius
+                radius: action.radius,
             });
-        };
+        }
         case BUFFER_FEATURE_LOADED: {
             return assign({}, state, {
                 featuresSelected: action.featuresSelected,
-                bufferedFeatures: action.bufferedFeatures
+                bufferedFeatures: action.bufferedFeatures,
             });
-        };
+        }
         case BUFFER_SET_LOADING: {
             return assign({}, state, {
-                loading: action.isLoading
+                loading: action.isLoading,
             });
-        };
+        }
         case BUFFER_FETCH_FAILURE: {
             return assign({}, state, {
-                error: action.error
+                error: action.error,
             });
-        };
+        }
         case TOGGLE_CONTROL: {
             return assign({}, state, {
                 layerSelected: action.layerSelected,
                 layerIndex: action.layerIndex,
-                loading: action.loading
+                loading: action.loading,
+                error: action.error
             });
-        };
+        }
         default:
             return state;
-    };
-};
-
-// เพื่อกระจาย features ออกจาก features array ถ้าเป็น Annotation <- อาจมีอย่างอื่นด้วย เช่น Measurement
-const spreadFeatures = (layerSelected) => { // for Annotation
-    let featuresArray = [];
-    for (let i = 0; i < layerSelected.features.length; i++) {
-        for (let j = 0; j < layerSelected.features[i].features.length; j++) {
-            featuresArray.push(layerSelected.features[i].features[j]);
-        }
-    }
-    console.log('spreadFeatures: ', featuresArray);
-    return featuresArray;
-};
-
-let layerTitle = ''
-const loadFeature = function (layerSelected) {
-    if (!layerSelected) {
-        return (dispatch) => {
-            dispatch(fetchGeoJsonFailure('Please select layers.'));
-        }
-    }
-    return (dispatch, getState) => {
-        console.log('layerSelected', layerSelected);
-        dispatch(loading(true));
-        dispatch(fetchGeoJsonFailure(''));
-        layerTitle = layerSelected.title || layerSelected.name;
-
-        // ถ้า layer นี้มี features ใน Client Side
-        if (layerSelected.features) {
-            console.log('Enter IF layerSelected.features', layerSelected.features);
-            console.log('layerTitle', layerTitle);
-
-            new Promise((resolve, reject) => {
-                let featuresGeoJson;
-                let typeName;
-                let checkAllFeaturesType;
-                let featuresIdTemp = [];
-                // if นี้เพื่อ checkAllFeaturesType
-                if (layerTitle === 'Annotations') { // อาจไม่ได้มีแค่ Annotations
-                    featuresGeoJson = spreadFeatures(layerSelected)
-                    typeName = featuresGeoJson[0].geometry.type
-                    checkAllFeaturesType = featuresGeoJson.every((feature) => feature.geometry.type === typeName)
-                } else {
-                    featuresGeoJson = layerSelected.features;
-                    typeName = featuresGeoJson[0].geometry.type;
-                    checkAllFeaturesType = featuresGeoJson.every((feature) => feature.geometry.type === typeName);
-                }
-
-                if (checkAllFeaturesType) {
-                    let featuresCollectionGeoJson = featureCollection(featuresGeoJson);
-                    featuresCollectionGeoJson.features.forEach((feature) => {
-                        if (feature.id) {
-                            featuresIdTemp.push(feature.id);
-                        } else if (feature.properties.id) { // For Annotation or etc.
-                            featuresIdTemp.push(feature.properties.id);
-                        }
-                    })
-                    let result = turfBuffer(featuresCollectionGeoJson, getState().buffer.radius, { units: getState().buffer.unitValue });
-                    result.features.forEach((feature, i) => {
-                        feature.id = 'buffered_' + featuresIdTemp[i];
-                        if (feature.properties.id) {
-                            feature.properties.id = 'buffered_' + featuresIdTemp[i];
-                        }
-                    })
-                    resolve(result);
-                } else {
-                    dispatch(fetchGeoJsonFailure('All feature must be same type'));
-                    dispatch(loading(false));
-                }
-            }).then(bufferedFeatures => {
-                console.log('bufferedLayer after Promise in if: ', bufferedFeatures);
-                dispatch(addAsLayer(bufferedFeatures));
-                dispatch(setLayer(-1));
-                dispatch(loading(false));
-            }).catch((e) => {
-                console.log(e);
-                dispatch(fetchGeoJsonFailure('ERROR in IF layer have feature'));
-                dispatch(loading(false));
-            })
-
-        } else {
-            const DEFAULT_API = 'https://geonode.longdo.com/geoserver/wfs';
-            new Promise((resolve, reject) => {
-                let params = {
-                    service: 'WFS',
-                    version: layerSelected.version,
-                    request: 'GetFeature',
-                    typeName: layerSelected.name,
-                    outputFormat: 'application/json',
-                };
-                // สำหรับ layer ที่มีการ filter จะมี layerFilter อยู่ใน obj
-                if (layerSelected.layerFilter) {
-                    const cql_filter = toCQLFilter(layerSelected?.layerFilter);
-                    console.log('cql_filter', cql_filter);
-                    params.cql_filter = cql_filter;
-                }
-                let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`, { params });
-                resolve(getFromAPI);
-            }).then((featuresCollectionGeoJSON) => {
-                let featuresCollectionData = featuresCollectionGeoJSON.data
-                console.log('featuresCollectionData', featuresCollectionData)
-                let typeName = featuresCollectionData.features[0].geometry.type
-                let checkAllFeaturesType = featuresCollectionData.features.every((feature) => feature.geometry.type === typeName)
-                if (checkAllFeaturesType) {
-                    new Promise((resolve, reject) => {
-                        console.log('featuresCollectionGeoJson', featuresCollectionData)
-                        let featuresIdTemp = []
-                        featuresCollectionData.features.forEach((feature) => featuresIdTemp.push(feature.id))
-                        console.log('featuresIdTemp', featuresIdTemp)
-                        let result = turfBuffer(featuresCollectionData, getState().buffer.radius, { units: getState().buffer.unitValue });
-                        result.features.forEach((feature, i) => {
-                            feature.id = 'buffered_' + featuresIdTemp[i];
-                            if (feature.properties.id) {
-                                feature.properties.id = 'buffered_' + featuresIdTemp[i];
-                            }
-                        })
-                        resolve(result)
-                    }).then(bufferedFeatures => {
-                        console.log('bufferedLayer after Promise: ', bufferedFeatures)
-                        dispatch(addAsLayer(bufferedFeatures))
-                        dispatch(setLayer(-1))
-                        dispatch(loading(false))
-                    }).catch((err) => {
-                        console.log(err);
-                        dispatch(fetchGeoJsonFailure('ERROR in Turf'))
-                        dispatch(loading(false))
-                    })
-                } else {
-                    dispatch(fetchGeoJsonFailure('All feature must be same type'))
-                    dispatch(loading(false))
-                }
-            }).catch(() => {
-                dispatch(loading(false))
-                dispatch(fetchGeoJsonFailure('ERROR in getFeature'))
-            })
-        }
     }
 }
-
+// -------------------------------------Epic--------------------------------------
 // epic ที่ไว้ดึง featuresCollection จาก services โดย loadFeature function
 const doBufferEpic = (action$, { getState = () => { } }) =>
     action$.ofType(BUFFER_DO_BUFFER)
@@ -308,45 +358,35 @@ const doBufferEpic = (action$, { getState = () => { } }) =>
             return (getState().controls.buffer || {}).enabled || false;
         })
         .switchMap(({ layerSelected }) => {
-            return Rx.Observable.from([
-                loadFeature(layerSelected)
-            ]);
+            return Rx.Observable.from([loadFeature(layerSelected)]);
         });
 
 // ส่วน Add_As_Layer ที่ buffer แล้วมาเพิ่มใน layers panel ด้านซ้ายกับวาดลงแผนที่
 const addAsBufferedLayerEpic = (action$) =>
     action$.ofType(BUFFER_ADD_AS_LAYER)
         .switchMap(({ bufferedFtCollection }) => {
-            console.log('==> addAsLayerEpic')
-            console.log('bufferedLayer in epic:', bufferedFtCollection)
+            console.log("==> addAsLayerEpic");
+            console.log("bufferedLayer in epic:", bufferedFtCollection);
             return Rx.Observable.of(
                 addLayer({
-                    type: 'vector',
+                    type: "vector",
                     id: uuidv1(),
-                    name: 'BufferedLayer',
+                    name: "BufferedLayer",
                     hideLoading: true,
                     features: [...bufferedFtCollection.features],
                     visibility: true,
-                    // style: {
-                    //     "weight": 1,
-                    //     "radius": 7,
-                    //     "opacity": 1,
-                    //     "fillOpacity": 1,
-                    //     "color": "rgba(255, 0, 0, 1)",
-                    //     "fillColor": "rgb(4, 4, 250)"
-                    // },
-                    title: 'Buffered_' + layerTitle
+                    title: "Buffered_" + layerTitle,
                 })
             );
         });
-
+// ----------------------------------------------------------------------------------
 const defaultState = {
     radius: 1,
     layerIndex: -1,
     unitValue: "kilometers",
     loading: false,
-    error: ''
-}
+    error: "",
+};
 
 class BufferDialog extends React.Component {
     static propTypes = {
@@ -364,12 +404,14 @@ class BufferDialog extends React.Component {
         onChangeLayer: PropTypes.func,
         onChangeUnit: PropTypes.func,
         onDoBuffer: PropTypes.func,
-    }
+    };
 
     static defaultProps = {
         show: false,
         bufferUnitValues: [
             { value: "kilometers", label: "km" },
+            { value: "meters", label: "m" },
+            { value: "วา", label: "วา" },
             { value: "miles", label: "miles" },
             { value: "degrees", label: "degrees" },
         ],
@@ -377,57 +419,71 @@ class BufferDialog extends React.Component {
         layersNode: [],
         layersGroups: [],
         layerIndex: -1,
-        unitValue: '',
+        unitValue: "",
 
         onClose: () => { },
         onChangeLayer: () => { },
         onChangeUnit: () => { },
         onDoBuffer: () => { },
-
     };
 
     onClose = () => {
-        this.props.onClose(false)
-    }
+        this.props.onClose(false);
+    };
 
     onLayerChange = (idx) => {
-        this.props.onChangeLayer(idx)
+        this.props.onChangeLayer(idx);
     };
 
     onDoBuffer = () => {
-        console.log('radius:', this.props.radius)
-        console.log('unit:', this.props.unitValue)
-        this.props.onDoBuffer(this.props.layersNode[this.props.layerIndex])
-    }
+        this.props.onDoBuffer(this.props.layersNode[this.props.layerIndex]);
+    };
 
     onChangeUnit = (unit) => {
-        this.props.onChangeUnit(unit)
-    }
+        this.props.onChangeUnit(unit);
+    };
 
     onChangeRadius = (radius) => {
-        this.props.onChangeRadius(Number(radius))
-    }
+        this.props.onChangeRadius(Number(radius));
+    };
 
     onReset = () => {
-        this.props.onChangeLayer(-1)
-    }
+        this.props.onChangeLayer(-1);
+    };
 
     render() {
         return this.props.show ? (
-            <Dialog Dialog id="measure-dialog" style={this?.dialogStyle} start={this?.start} >
+            <Dialog
+                Dialog
+                id="measure-dialog"
+                style={this?.dialogStyle}
+                start={this?.start}
+            >
                 <div key="header" role="header">
-                    <Glyphicon glyph="folder-open" />&nbsp;Buffer
-                    <button key="close" onClick={this.onClose} className="close"><Glyphicon glyph="1-close" /></button>
+                    <Glyphicon glyph="folder-open" />
+                    &nbsp;
+                    <Message msgId="bufferPlugin.title" />
+                    <button
+                        key="close"
+                        onClick={this.onClose}
+                        className="close"
+                    >
+                        <Glyphicon glyph="1-close" />
+                    </button>
                 </div>
                 <div key="body" role="body">
-                    <p>Layer</p>
+                    <p>
+                        <Message msgId="bufferPlugin.layerLabel" />
+                    </p>
                     <LayerSelector
                         responses={this.props.layersNode}
                         index={this.props.layerIndex}
                         setIndex={this.onLayerChange}
                     ></LayerSelector>
                     <br />
-                    <p>Buffer size</p>
+                    <p>
+                        <Message msgId="bufferPlugin.bufferLabel" />
+                    </p>
                     <Row>
                         <Col md={6}>
                             <input
@@ -435,50 +491,47 @@ class BufferDialog extends React.Component {
                                 type="number"
                                 className="form-control"
                                 id="buffer-size"
-                                onChange={e => this.onChangeRadius(e.nativeEvent.target.value)}
-                                value={this.props.radius}
+                                onChange={(e) => this.onChangeRadius(e.nativeEvent.target.value)}
+                                value={this.props.radius !== 0 ? this.props.radius : ""}
                             />
                         </Col>
                         <Col md={6}>
                             <DropdownList
-                                id='bufferUnitValues'
+                                id="bufferUnitValues"
                                 data={this.props.bufferUnitValues}
                                 dataKey="value"
                                 textField="label"
                                 valueField="value"
                                 defaultValue={this.props.bufferUnitValues[0]}
-                                onChange={(unit) => {
-                                    console.log(unit)
-                                    return this.onChangeUnit(unit.value)
-                                }}
+                                onChange={(unit) => this.onChangeUnit(unit.value)}
                             />
                         </Col>
                     </Row>
                     <div
                         style={{
-                            display: "flex"
-                        }}>
+                            display: "flex",
+                        }}
+                    >
                         <br />
-                        {
-                            this.props.loading ?
-                                <button
-                                    key="buffer-save"
-                                    className="btn btn-longdo-outline-info"
-                                    style={{ minWidth: "100px" }}
-                                    disabled
-                                >
-                                    loading...
-                                </button>
-                                :
-                                <button
-                                    key="buffer-save"
-                                    className="btn btn-longdo-outline-info"
-                                    style={{ minWidth: "100px" }}
-                                    onClick={this.onDoBuffer}
-                                >
-                                    Buffer
-                                </button>
-                        }
+                        {this.props.loading ? (
+                            <button
+                                key="buffer-save"
+                                className="btn btn-longdo-outline-info"
+                                style={{ minWidth: "100px" }}
+                                disabled
+                            >
+                                <Message msgId="bufferPlugin.loading" />
+                            </button>
+                        ) : (
+                            <button
+                                key="buffer-save"
+                                className="btn btn-longdo-outline-info"
+                                style={{ minWidth: "100px" }}
+                                onClick={this.onDoBuffer}
+                            >
+                                <Message msgId="bufferPlugin.button" />
+                            </button>
+                        )}
 
                         <button
                             key="clear-routing"
@@ -489,14 +542,17 @@ class BufferDialog extends React.Component {
                                 marginRight: "5px",
                             }}
                         >
-                            Clear
+                            <Message msgId="bufferPlugin.resetButton" />
                         </button>
-
-                        <p style={{ color: "red" }}>{this.props.error}</p>
+                        {this.props.error === "succeed" ? (
+                            <p style={{ color: "green" }}>Buffer succeed</p>
+                        ) : (
+                            <p style={{ color: "red" }}>{this.props.error}</p>
+                        )}
                     </div>
                 </div>
-            </Dialog >
-        ) : null
+            </Dialog>
+        ) : null;
     }
 }
 
@@ -514,7 +570,7 @@ const buffer = connect(
                 ...bufferState,
                 show,
                 layersGroups,
-                layersNode: layerNodesExtracter(layersGroups)
+                layersNode: layerNodesExtracter(layersGroups),
             };
         }
     ),
@@ -545,10 +601,10 @@ export default {
         },
     }),
     reducers: {
-        buffer: bufferReducer
+        buffer: bufferReducer,
     },
     epics: {
         doBufferEpic,
-        addAsBufferedLayerEpic
+        addAsBufferedLayerEpic,
     },
 };
