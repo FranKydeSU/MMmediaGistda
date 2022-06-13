@@ -60,7 +60,7 @@ const loadFeature = function (layerSelected) {
                 dispatch(loading(false));
                 return;
             }
-            // Check Unit
+            // Check Unit | โดยปกติ turf จะสามารถใช้หน่วย kilometers / miles / degrees
             switch (unit) {
                 case "meters":
                     radius /= 1000;
@@ -76,6 +76,35 @@ const loadFeature = function (layerSelected) {
             }
             return [radius, unit];
         };
+
+        const bufferWithTurf = (featuresCollectionGeoJson) => {
+            let radiusAndUnit = handleUnit(
+                getState().buffer.radius,
+                getState().buffer.unitValue
+            );
+            console.log("radius", radiusAndUnit[0]);
+            console.log("unitValue", radiusAndUnit[1]);
+            // เก็บ id เอาไว้ใน array เพราะถ้า Turf แล้ว id จะหาย
+            let featuresIdTemp = [];
+            featuresCollectionGeoJson.features.forEach((feature) => {
+                if (feature.id)
+                    featuresIdTemp.push(feature.id);
+                else if (feature.properties.id) // For Annotation or etc.
+                    featuresIdTemp.push(feature.properties.id);
+            });
+            let result = turfBuffer(
+                featuresCollectionGeoJson,
+                radiusAndUnit[0],
+                { units: radiusAndUnit[1] }
+            );
+            // ใส่ id ที่อยู่ใน array กลับเข้าไป
+            result.features.forEach((feature, i) => {
+                feature.id = "buffered_" + featuresIdTemp[i];
+                if (feature.properties.id) // For Annotation or etc.
+                    feature.properties.id = "buffered_" + featuresIdTemp[i];
+            });
+            return result;
+        }
 
         dispatch(loading(true));
         layerTitle = layerSelected.title || layerSelected.name;
@@ -98,31 +127,32 @@ const loadFeature = function (layerSelected) {
 
                 if (checkAllFeaturesType) {
                     let featuresCollectionGeoJson = featureCollection(featuresGeoJson);
-                    let radiusAndUnit = handleUnit(
-                        getState().buffer.radius,
-                        getState().buffer.unitValue
-                    );
-                    console.log("radius", radiusAndUnit[0]);
-                    console.log("unitValue", radiusAndUnit[1]);
-                    // เก็บ id เอาไว้ใน array เพราะถ้า Turf แล้ว id จะหาย
-                    let featuresIdTemp = [];
-                    featuresCollectionGeoJson.features.forEach((feature) => {
-                        if (feature.id)
-                            featuresIdTemp.push(feature.id);
-                        else if (feature.properties.id) // For Annotation or etc.
-                            featuresIdTemp.push(feature.properties.id);
-                    });
-                    let result = turfBuffer(
-                        featuresCollectionGeoJson,
-                        radiusAndUnit[0],
-                        { units: radiusAndUnit[1] }
-                    );
-                    // ใส่ id ที่อยู่ใน array กลับเข้าไป
-                    result.features.forEach((feature, i) => {
-                        feature.id = "buffered_" + featuresIdTemp[i];
-                        if (feature.properties.id) // For Annotation or etc.
-                            feature.properties.id = "buffered_" + featuresIdTemp[i];
-                    });
+                    let result = bufferWithTurf(featuresCollectionGeoJson);
+                    // let radiusAndUnit = handleUnit(
+                    //     getState().buffer.radius,
+                    //     getState().buffer.unitValue
+                    // );
+                    // console.log("radius", radiusAndUnit[0]);
+                    // console.log("unitValue", radiusAndUnit[1]);
+                    // // เก็บ id เอาไว้ใน array เพราะถ้า Turf แล้ว id จะหาย
+                    // let featuresIdTemp = [];
+                    // featuresCollectionGeoJson.features.forEach((feature) => {
+                    //     if (feature.id)
+                    //         featuresIdTemp.push(feature.id);
+                    //     else if (feature.properties.id) // For Annotation or etc.
+                    //         featuresIdTemp.push(feature.properties.id);
+                    // });
+                    // let result = turfBuffer(
+                    //     featuresCollectionGeoJson,
+                    //     radiusAndUnit[0],
+                    //     { units: radiusAndUnit[1] }
+                    // );
+                    // // ใส่ id ที่อยู่ใน array กลับเข้าไป
+                    // result.features.forEach((feature, i) => {
+                    //     feature.id = "buffered_" + featuresIdTemp[i];
+                    //     if (feature.properties.id) // For Annotation or etc.
+                    //         feature.properties.id = "buffered_" + featuresIdTemp[i];
+                    // });
                     resolve(result);
                 } else {
                     dispatch(fetchGeoJsonFailure(<Message msgId="bufferPlugin.notSameType" />));
@@ -169,28 +199,29 @@ const loadFeature = function (layerSelected) {
                     );
                     if (checkAllFeaturesType) {
                         new Promise((resolve, reject) => {
-                            let radiusAndUnit = handleUnit(
-                                getState().buffer.radius,
-                                getState().buffer.unitValue
-                            );
-                            console.log("radius", radiusAndUnit[0]);
-                            console.log("unitValue", radiusAndUnit[1]);
-                            // เก็บ id เอาไว้ใน array เพราะถ้า Turf แล้ว id จะหาย
-                            let featuresIdTemp = [];
-                            featuresCollectionData.features.forEach((feature) =>
-                                featuresIdTemp.push(feature.id)
-                            );
-                            let result = turfBuffer(
-                                featuresCollectionData,
-                                radiusAndUnit[0],
-                                { units: radiusAndUnit[1] }
-                            );
-                            // ใส่ id ที่อยู่ใน array กลับเข้าไป
-                            result.features.forEach((feature, i) => {
-                                feature.id = "buffered_" + featuresIdTemp[i];
-                                if (feature.properties.id)
-                                    feature.properties.id = "buffered_" + featuresIdTemp[i];
-                            });
+                            let result = bufferWithTurf(featuresCollectionData)
+                            // let radiusAndUnit = handleUnit(
+                            //     getState().buffer.radius,
+                            //     getState().buffer.unitValue
+                            // );
+                            // console.log("radius", radiusAndUnit[0]);
+                            // console.log("unitValue", radiusAndUnit[1]);
+                            // // เก็บ id เอาไว้ใน array เพราะถ้า Turf แล้ว id จะหาย
+                            // let featuresIdTemp = [];
+                            // featuresCollectionData.features.forEach((feature) =>
+                            //     featuresIdTemp.push(feature.id)
+                            // );
+                            // let result = turfBuffer(
+                            //     featuresCollectionData,
+                            //     radiusAndUnit[0],
+                            //     { units: radiusAndUnit[1] }
+                            // );
+                            // // ใส่ id ที่อยู่ใน array กลับเข้าไป
+                            // result.features.forEach((feature, i) => {
+                            //     feature.id = "buffered_" + featuresIdTemp[i];
+                            //     if (feature.properties.id)
+                            //         feature.properties.id = "buffered_" + featuresIdTemp[i];
+                            // });
                             resolve(result);
                         })
                             .then((bufferedFeatures) => {

@@ -64,6 +64,7 @@ const checkFeaturesTypeCondition = (type1, type2) => {
         ['point', 'point'],
         ['linestring', 'linestring'],
         ['polygon', 'polygon'],
+        ['multipoint', 'multipoint'],
         ['multilinestring', 'multilinestring'],
         ['multipolygon', 'multipolygon'],
 
@@ -98,11 +99,16 @@ const spreadFeatures = (layerSelected) => {
     return featuresArray;
 }
 
+// this call for mergeAsLayer
 let layerTitle1 = '';
 let layerTitle2 = '';
 const loadFeature = function (layerSelected1, layerSelected2) {
-    layerTitle1 = layerSelected1.title || layerSelected1.name || undefined;
-    layerTitle2 = layerSelected2.title || layerSelected2.name || undefined;
+    console.log('layerSelected1', layerSelected1)
+    console.log('layerSelected2', layerSelected2)
+    layerTitle1 = layerSelected1?.title || layerSelected1?.name || undefined;// ERROR!
+    layerTitle2 = layerSelected2?.title || layerSelected2?.name || undefined;
+    console.log('layerTitle1', layerTitle1)
+    console.log('layerTitle2', layerTitle2)
     // กรณีไม่เลือกครบ 2 layerใน LayerSelector dropdown
     if (!layerSelected1 || !layerSelected2) {
         layerSelected1 = {};
@@ -365,7 +371,7 @@ const doMergeEpic = (action$, { getState = () => { } }) =>
         .switchMap(({ layerSelected1, layerSelected2 }) => {
             return Rx.Observable.from([
                 loadFeature(layerSelected1, layerSelected2)
-            ]);
+            ])
         });
 
 // epic ที่นำ features ที่ merge แล้วเพิ่มใน layers panel ด้านซ้ายกับวาดลงแผนที่
