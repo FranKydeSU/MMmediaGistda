@@ -3407,11 +3407,12 @@
             "button": "Buffer",
             "resetButton": "Clear",
             "noLayer": "Please select layer",
-            "radiusMoreThan0": "Buffer size should more than 0",
+            "errorLessThan1": "Buffer size should more than 0",
             "notSameType": "All feature must be same type",
             "turfError": "ERROR in Turf",
             "errorHaveLayer": "ERROR in IF layer have feature",
-            "errorFetch": "ERROR in getFeature"
+            "errorFetch": "ERROR in getFeature",
+            "successText": "Buffered succeed"
         },
         "mergeLayerPlugin": {
             "title": "Merge",
@@ -3419,7 +3420,15 @@
             "layerLabel2": "Layer 2",
             "loading": "Loading...",
             "button": "Merge",
-            "resetButton": "Clear"
+            "resetButton": "Clear",
+            "errorFetch": "ERROR from getFeature Promise",
+            "noBothLayers": "Both layers didn't select",
+            "sameLayers": "Both layers have same layer",
+            "haveLayerAlready": "Some layer has been in Layer already.",
+            "errorGetFeature1": "ERROR in getFeature1",
+            "errorGetFeature2": "ERROR in getFeature2",
+            "errorAllGetFeature": "ERROR in Promise.all",
+            "successText": "Merged succeed"
         }
     }
 }

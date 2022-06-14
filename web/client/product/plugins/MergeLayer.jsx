@@ -3,10 +3,6 @@ import React from 'react';
 import { connect } from 'react-redux';
 import assign from 'object-assign';
 import { get } from 'lodash';
-import axios from '../../libs/ajax';
-import Rx from 'rxjs';
-import uuidv1 from 'uuid/v1';
-import { featureCollection } from '@turf/helpers';
 
 import { createControlEnabledSelector } from '../../selectors/controls';
 import { setControlProperty } from "../../actions/controls";
@@ -14,11 +10,28 @@ import { createSelector } from 'reselect';
 import { Glyphicon } from 'react-bootstrap';
 import Dialog from '../../components/misc/Dialog';
 import LayerSelector from './mergelayer/LayerSelector';
-import { groupsSelector, layersSelector } from '../../selectors/layers';
-import { addLayer } from '../../actions/layers';
+import {
+    groupsSelector,
+    layersSelector
+} from '../../selectors/layers';
 import Message from '../../components/I18N/Message';
 
-import { toCQLFilter } from '../../../client/utils/FilterUtils';
+// Actions
+import {
+    doMerge,
+    setLayer1,
+    setLayer2,
+    toggleMergeLyrTool
+} from './mergelayer/actions/mergelayer';
+
+// Reducer
+import { mergeLayerReducer } from './mergelayer/reducers/mergelayerReducer';
+
+// Epics
+import {
+    doMergeEpic,
+    mergeAsLayerEpic
+} from './mergelayer/epics/mergelayerEpic';
 
 createControlEnabledSelector("mergelyr");
 
@@ -26,217 +39,13 @@ const mergeLayerSelector = (state) => get(state, 'controls.mergelyr.enabled');
 
 // กรอง layer จาก groupNode
 const layerNodesExtracter = (groups) => {
-    const layerNode = []
+    const layerNode = [];
     groups.map(groupNode => {
-        layerNode.push(...groupNode.nodes)
+        layerNode.push(...groupNode.nodes);
     })
-    return layerNode
+    return layerNode;
 };
 
-const getFeature = (layerSelected) => {
-    const DEFAULT_API = 'https://geonode.longdo.com/geoserver/wfs';
-    return new Promise((resolve, reject) => {
-        let params = {
-            service: 'WFS',
-            version: layerSelected.version,
-            request: 'GetFeature',
-            typeName: layerSelected.name,
-            outputFormat: 'application/json',
-        };
-        // สำหรับ layer ที่มีการ filter จะมี layerFilter อยู่ใน obj
-        if (layerSelected.layerFilter) {
-            const cql_filter = toCQLFilter(layerSelected?.layerFilter);
-            console.log('cql_filter', cql_filter);
-            params.cql_filter = cql_filter;
-        }
-        let getFromAPI = axios.get(`${layerSelected.url || DEFAULT_API}`, { params });
-        resolve(getFromAPI);
-        reject((dispatch) => {
-            dispatch(fetchGeoJsonFailure('ERROR from getFeature Promise'))
-        });
-    })
-}
-
-// checkFeaturesTypeCondition คือ Check ว่า 2 layer type นี้สามารถ merge ได้หรือไม่ โดนเงื่อนไขอยู่ภายใน array นี้
-const checkFeaturesTypeCondition = (type1, type2) => {
-    console.log('type1, type2', type1.toLowerCase(), type2.toLowerCase())
-    let featuresTypeCondition = [
-        ['point', 'point'],
-        ['linestring', 'linestring'],
-        ['polygon', 'polygon'],
-        ['multipoint', 'multipoint'],
-        ['multilinestring', 'multilinestring'],
-        ['multipolygon', 'multipolygon'],
-
-        ['point', 'multipoint'],
-        ['multipoint', 'point'],
-
-        ['multilinestring', 'linestring'],
-        ['linestring', 'multilinestring'],
-
-        ['multipolygon', 'polygon'],
-        ['polygon', 'multipolygon'],
-    ];
-    for (let i = 0; i < featuresTypeCondition.length; i++) {
-        if (featuresTypeCondition[i][0] === type1?.toLowerCase() && featuresTypeCondition[i][1] === type2?.toLowerCase()) {
-            return true;
-        }
-    }
-    return false;
-}
-
-// เพื่อกระจาย features ออกจาก features array ถ้าเป็น Annotation features <- อาจมีอย่างอื่นด้วย เช่น Measurement
-const spreadFeatures = (layerSelected) => {
-    var newGeojson = JSON.parse(JSON.stringify(layerSelected))
-    let featuresArray = [];
-    for (let i = 0; i < newGeojson.features.length; i++) {
-        for (let j = 0; j < newGeojson.features[i].features.length; j++) {
-            featuresArray.push(newGeojson.features[i].features[j])
-        }
-    }
-    featuresArray.forEach((feature) => delete feature.style)
-    console.log('spreadFeatures: ', featuresArray);
-    return featuresArray;
-}
-
-// this call for mergeAsLayer
-let layerTitle1 = '';
-let layerTitle2 = '';
-const loadFeature = function (layerSelected1, layerSelected2) {
-    console.log('layerSelected1', layerSelected1)
-    console.log('layerSelected2', layerSelected2)
-    layerTitle1 = layerSelected1?.title || layerSelected1?.name || undefined;// ERROR!
-    layerTitle2 = layerSelected2?.title || layerSelected2?.name || undefined;
-    console.log('layerTitle1', layerTitle1)
-    console.log('layerTitle2', layerTitle2)
-    // กรณีไม่เลือกครบ 2 layerใน LayerSelector dropdown
-    if (!layerSelected1 || !layerSelected2) {
-        layerSelected1 = {};
-        layerSelected2 = {};
-        return (dispatch) => {
-            dispatch(fetchGeoJsonFailure('Both layers didn\'t select'));
-        }
-
-        // กรณีชื่อ layer เหมือนกัน
-    } else if (layerTitle1 === layerTitle2) {
-        layerSelected1 = {};
-        layerSelected2 = {};
-        return (dispatch) => {
-            dispatch(fetchGeoJsonFailure('Both layers have same layer'));
-        }
-    }
-    return (dispatch) => {
-        const handleMerge = (canMerge, features1, features2) => {
-            if (canMerge) {
-                console.log('features1', features1);
-                console.log('features2', features2);
-
-                // check id เผื่อ mergedLayer มี layer_id เดียวกับ layer_id ที่จะ merge ด้วย
-                // โดยเฉพาะ Annotation ไม่รู้ว่าเอาแยกออกมาเปลี่ยน id แล้วแต่ทำไม Annotation หลักถึงเปลี่ยน id ด้วย
-                for (let i = 0; i < features1.length; i++) {
-                    for (let j = 0; j < features2.length; j++) {
-                        if (features1[i].id === features2[j].id) {
-                            console.log(features1[i].id, features2[j].id)
-                            dispatch(fetchGeoJsonFailure('Some layer has been in Layer already.'));
-                            dispatch(loading(false));
-                            return;
-                        }
-                    }
-                }
-
-                let mergedFeatures = {
-                    type: 'FeatureCollection',
-                    features: [...features1, ...features2]
-                }
-                console.log('mergedFeatures', mergedFeatures)
-                dispatch(loadMergedLayer(mergedFeatures)) // ไม่จำเป็นอีกแล้ว
-                dispatch(mergeAsLayer(mergedFeatures));
-                dispatch(setLayer1(-1)); dispatch(setLayer2(-1));
-                dispatch(loading(false));
-
-            } else {
-                dispatch(fetchGeoJsonFailure(`\'${features1[0].geometry.type}\' - \'${features2[0].geometry.type}\' type can't be merged`));
-                dispatch(loading(false));
-            }
-        }
-
-        dispatch(loading(true));
-        dispatch(fetchGeoJsonFailure(''));
-        // ทั้ง 2 layer มี feature ใน Client side อยู่แล้ว
-        if (layerSelected1.features && layerSelected2.features) {
-            let features1 = layerSelected1.features;
-            let features2 = layerSelected2.features;
-            if (layerTitle1 === 'Annotations') {
-                features1 = spreadFeatures(layerSelected1);
-            }
-            if (layerTitle2 === 'Annotations') {
-                features2 = spreadFeatures(layerSelected2);
-            }
-            console.log('features1, features2', features1, features2);
-            handleMerge(checkFeaturesTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
-                features1,
-                features2
-            );
-
-            // layer ที่ 2 มี feature ใน Client side อยู่แล้ว
-        } else if (!layerSelected1.features && layerSelected2.features) {
-            getFeature(layerSelected1).then(featuresCollectionGeoJson1 => {
-                let features1 = featuresCollectionGeoJson1.data.features;
-                let features2 = layerSelected2.features;
-                if (layerTitle2 === 'Annotations') {
-                    features2 = spreadFeatures(layerSelected2);
-                }
-                console.log('features1, features2', features1, features2);
-                handleMerge(checkFeaturesTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
-                    features1,
-                    features2,
-                );
-            }).catch((e) => {
-                console.log(e);
-                dispatch(fetchGeoJsonFailure('ERROR in getFeature1'));
-                dispatch(loading(false));
-            })
-
-            // layer ที่ 1 มี feature อยู่ใน Client side แล้ว
-        } else if (layerSelected1.features && !layerSelected2.features) {
-            console.log('Enter if 1 have features')
-            getFeature(layerSelected2).then(featuresCollectionGeoJson2 => {
-                let features1 = layerSelected1.features;;
-                let features2 = featuresCollectionGeoJson2.data.features;
-                if (layerTitle1 === 'Annotations') {
-                    features1 = spreadFeatures({ ...layerSelected1 });
-                }
-                console.log('features1, features2', features1, features2);
-                handleMerge(checkFeaturesTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
-                    features1,
-                    features2,
-                );
-            }).catch((e) => {
-                console.log(e);
-                dispatch(fetchGeoJsonFailure('ERROR in getFeature2'));
-                dispatch(loading(false));
-            })
-
-            // ทั้ง 2 layer ยังไม่มี feature ใน Client side (ติดปัญหา delay หรือ catch มากที่สุด)
-        } else {
-            let getFeature1 = getFeature(layerSelected1);
-            let getFeature2 = getFeature(layerSelected2);
-            Promise.all([getFeature1, getFeature2]).then(featuresCollectionGeoJsons => {
-                let features1 = featuresCollectionGeoJsons[0].data.features;
-                let features2 = featuresCollectionGeoJsons[1].data.features;
-                console.log('features1, features2', features1, features2);
-                handleMerge(checkFeaturesTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
-                    features1,
-                    features2
-                );
-            }).catch((e) => {
-                console.log(e);
-                dispatch(fetchGeoJsonFailure('ERROR in Promise.all'));
-                dispatch(loading(false));
-            });
-        }
-    };
-};
 // -------------------------------------Selector--------------------------------------
 const selector = (state) => {
     return {
@@ -246,159 +55,6 @@ const selector = (state) => {
         error: state.mergelyr.error,
         mergedLayer: state.mergelyr.mergedLayer
     };
-};
-// -------------------------------------Action--------------------------------------
-const MERGELYR_SET_LAYER_1 = "MERGELYR:SET_LAYER_1";
-const MERGELYR_SET_LAYER_2 = "MERGELYR:SET_LAYER_2";
-const MERGELYR_DO_MERGE = "MERGELYR:DO_MERGE";
-const MERGELYR_SET_LOADING = "MERGELYR:SET_LOADING";
-const MERGELYR_ADD_AS_LAYER = "MERGELYR:ADD_AS_LAYER";
-const MERGELYR_FETCH_FAILURE = "MERGELYR:FETCH_FAILURE";
-const MERGELYR_LOAD_MERGEDLAYER = "MERGELYR:LOAD_MERGELAYER";
-// ค่าพิื้นฐานที่เรียกใช้คือ TOGGLE_CONTROL -> /reducers/controls.js
-export const TOGGLE_CONTROL = 'TOGGLE_CONTROL';
-
-const setLayer1 = function (idx) {
-    return {
-        type: MERGELYR_SET_LAYER_1,
-        index1: idx
-    };
-};
-
-const setLayer2 = function (idx) {
-    return {
-        type: MERGELYR_SET_LAYER_2,
-        index2: idx
-    };
-};
-
-const doMerge = function (layerSelected1, layerSelected2) {
-    return {
-        type: MERGELYR_DO_MERGE,
-        layerSelected1,
-        layerSelected2
-    };
-};
-
-const loading = function (isLoading) {
-    return {
-        type: MERGELYR_SET_LOADING,
-        isLoading
-    };
-};
-
-const mergeAsLayer = function (featureCollection) {
-    return {
-        type: MERGELYR_ADD_AS_LAYER,
-        featureCollection
-    };
-};
-
-const fetchGeoJsonFailure = function (error) {
-    return {
-        type: MERGELYR_FETCH_FAILURE,
-        error
-    };
-};
-
-const toggleMergeLyrTool = function () {
-    return {
-        type: TOGGLE_CONTROL,
-        control: 'mergelyr',
-        property: null,
-        layerSelected1: {},
-        layerSelected2: {},
-        layerIndex1: -1,
-        layerIndex2: -1,
-        loading: false
-    };
-};
-
-const loadMergedLayer = function (mergedLayer) {
-    return {
-        type: MERGELYR_LOAD_MERGEDLAYER,
-        mergedLayer
-    }
-}
-// -------------------------------------Reducer--------------------------------------
-function mergeLayerReducer(state = defaultState, action) {
-    switch (action.type) {
-        case MERGELYR_SET_LAYER_1: {
-            return assign({}, state, {
-                layerIndex1: action.index1
-            });
-        };
-        case MERGELYR_SET_LAYER_2: {
-            return assign({}, state, {
-                layerIndex2: action.index2
-            });
-        };
-        case MERGELYR_SET_LOADING: {
-            return assign({}, state, {
-                loading: action.isLoading
-            });
-        };
-        case MERGELYR_FETCH_FAILURE: {
-            return assign({}, state, {
-                error: action.error
-            });
-        };
-        case TOGGLE_CONTROL: {
-            return assign({}, state, {
-                layerSelected1: action.layerSelected1,
-                layerSelected2: action.layerSelected2,
-                layerIndex1: action.layerIndex1,
-                layerIndex2: action.layerIndex1,
-                loading: action.loading
-            });
-        };
-        case MERGELYR_LOAD_MERGEDLAYER: {
-            return assign({}, state, {
-                mergedLayer: action.mergedLayer
-            })
-        }
-        default:
-            return state;
-    };
-};
-// -------------------------------------Epic--------------------------------------
-// epic ที่ไว้ดึง featureCollection จาก services โดย loadFeature function
-const doMergeEpic = (action$, { getState = () => { } }) =>
-    action$.ofType(MERGELYR_DO_MERGE)
-        .filter(() => {
-            return (getState().controls.mergelyr || {}).enabled || false;
-        })
-        .switchMap(({ layerSelected1, layerSelected2 }) => {
-            return Rx.Observable.from([
-                loadFeature(layerSelected1, layerSelected2)
-            ])
-        });
-
-// epic ที่นำ features ที่ merge แล้วเพิ่มใน layers panel ด้านซ้ายกับวาดลงแผนที่
-const mergeAsLayerEpic = (action$) =>
-    action$.ofType(MERGELYR_ADD_AS_LAYER)
-        .switchMap(({ featureCollection }) => {
-            console.log('==> mergeAsLayerEpic');
-            console.log('featuresWantToAddLayer:', featureCollection);
-            return Rx.Observable.of(
-                addLayer({
-                    type: 'vector',
-                    id: uuidv1(),
-                    name: 'MergeLayer',
-                    hideLoading: true,
-                    features: [...featureCollection.features],
-                    visibility: true,
-                    title: 'Merged_(' + layerTitle1 + '&' + layerTitle2 + ')'
-                })
-            );
-        });
-// -------------------------------------------------------------------------------
-
-const defaultState = {
-    layerIndex1: -1,
-    layerIndex2: -1,
-    loading: false,
-    error: ''
 };
 
 class MergeLayerComponent extends React.Component {
@@ -517,7 +173,11 @@ class MergeLayerComponent extends React.Component {
                             <Message msgId="mergeLayerPlugin.resetButton" />
                         </button>
 
-                        <p style={{ color: "red" }}>{this.props.error}</p>
+                        {this.props.error === "succeed" ? (
+                            <p style={{ color: "green" }}><Message msgId="mergeLayerPlugin.successText" /></p>
+                        ) : (
+                            <p style={{ color: "red" }}>{this.props.error}</p>
+                        )}
                     </div>
 
                 </div>
