@@ -3,7 +3,9 @@ import axios from "../../../../libs/ajax";
 import Rx from "rxjs";
 import uuidv1 from "uuid/v1";
 import { toCQLFilter } from "../../../../../client/utils/FilterUtils";
-
+import Message from "../../../../components/I18N/Message";
+import { addLayer } from '../../../../actions/layers';
+// Actions
 import {
     MERGELYR_DO_MERGE,
     MERGELYR_ADD_AS_LAYER,
@@ -13,8 +15,6 @@ import {
     setLayer2,
     mergeAsLayer,
 } from '../actions/mergelayer'
-import Message from "../../../../components/I18N/Message";
-import { addLayer } from '../../../../actions/layers';
 
 const getFeature = (layerSelected) => {
     const DEFAULT_API = 'https://geonode.longdo.com/geoserver/wfs';
@@ -82,7 +82,7 @@ const spreadFeatures = (layerSelected) => {
     return featuresArray;
 }
 
-// this call for mergeAsLayer
+// เพื่อเอาไปใช้ต่อกับ mergeAsLayerEpic
 let layerTitle1 = '';
 let layerTitle2 = '';
 const loadFeature = function (layerSelected1, layerSelected2) {
@@ -115,7 +115,6 @@ const loadFeature = function (layerSelected1, layerSelected2) {
                 console.log('features2', features2);
 
                 // check id เผื่อ mergedLayer มี layer_id เดียวกับ layer_id ที่จะ merge ด้วย
-                // โดยเฉพาะ Annotation ไม่รู้ว่าเอาแยกออกมาเปลี่ยน id แล้วแต่ทำไม Annotation หลักถึงเปลี่ยน id ด้วย
                 for (let i = 0; i < features1.length; i++) {
                     for (let j = 0; j < features2.length; j++) {
                         if (features1[i].id === features2[j].id) {
@@ -134,8 +133,7 @@ const loadFeature = function (layerSelected1, layerSelected2) {
                 console.log('mergedFeatures', mergedFeatures)
                 dispatch(mergeAsLayer(mergedFeatures));
                 dispatch(fetchGeoJsonFailure("succeed"));
-                dispatch(setLayer1(-1)); dispatch(setLayer2(-1));
-                dispatch(loading(false));
+                dispatch(setLayer1(-1)); dispatch(setLayer2(-1));dispatch(loading(false));
 
             } else {
                 dispatch(fetchGeoJsonFailure(
@@ -151,14 +149,14 @@ const loadFeature = function (layerSelected1, layerSelected2) {
         if (layerSelected1.features && layerSelected2.features) {
             let features1 = layerSelected1.features;
             let features2 = layerSelected2.features;
-            if (layerTitle1 === 'Annotations') {
+            if (layerTitle1 === 'Annotations') 
                 features1 = spreadFeatures(layerSelected1);
-            }
-            if (layerTitle2 === 'Annotations') {
+            if (layerTitle2 === 'Annotations') 
                 features2 = spreadFeatures(layerSelected2);
-            }
+
             console.log('features1, features2', features1, features2);
-            handleMerge(checkFeaturesTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
+            handleMerge(
+                checkFeaturesTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
                 features1,
                 features2
             );
@@ -168,11 +166,12 @@ const loadFeature = function (layerSelected1, layerSelected2) {
             getFeature(layerSelected1).then(featuresCollectionGeoJson1 => {
                 let features1 = featuresCollectionGeoJson1.data.features;
                 let features2 = layerSelected2.features;
-                if (layerTitle2 === 'Annotations') {
+                if (layerTitle2 === 'Annotations') 
                     features2 = spreadFeatures(layerSelected2);
-                }
+                
                 console.log('features1, features2', features1, features2);
-                handleMerge(checkFeaturesTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
+                handleMerge(
+                    checkFeaturesTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
                     features1,
                     features2,
                 );
@@ -184,15 +183,15 @@ const loadFeature = function (layerSelected1, layerSelected2) {
 
             // layer ที่ 1 มี feature อยู่ใน Client side แล้ว
         } else if (layerSelected1.features && !layerSelected2.features) {
-            console.log('Enter if 1 have features')
             getFeature(layerSelected2).then(featuresCollectionGeoJson2 => {
                 let features1 = layerSelected1.features;;
                 let features2 = featuresCollectionGeoJson2.data.features;
-                if (layerTitle1 === 'Annotations') {
-                    features1 = spreadFeatures({ ...layerSelected1 });
-                }
+                if (layerTitle1 === 'Annotations') 
+                    features1 = spreadFeatures(layerSelected1);
+                
                 console.log('features1, features2', features1, features2);
-                handleMerge(checkFeaturesTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
+                handleMerge(
+                    checkFeaturesTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
                     features1,
                     features2,
                 );
@@ -210,7 +209,8 @@ const loadFeature = function (layerSelected1, layerSelected2) {
                 let features1 = featuresCollectionGeoJsons[0].data.features;
                 let features2 = featuresCollectionGeoJsons[1].data.features;
                 console.log('features1, features2', features1, features2);
-                handleMerge(checkFeaturesTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
+                handleMerge(
+                    checkFeaturesTypeCondition(features1[0].geometry.type, features2[0].geometry.type),
                     features1,
                     features2
                 );
@@ -222,7 +222,6 @@ const loadFeature = function (layerSelected1, layerSelected2) {
         }
     };
 };
-
 // epic ที่ไว้ดึง featureCollection จาก services โดย loadFeature function
 export const doMergeEpic = (action$, { getState = () => { } }) =>
     action$.ofType(MERGELYR_DO_MERGE)
@@ -234,13 +233,12 @@ export const doMergeEpic = (action$, { getState = () => { } }) =>
                 loadFeature(layerSelected1, layerSelected2)
             ])
         });
-
 // epic ที่นำ features ที่ merge แล้วเพิ่มใน layers panel ด้านซ้ายกับวาดลงแผนที่
 export const mergeAsLayerEpic = (action$) =>
     action$.ofType(MERGELYR_ADD_AS_LAYER)
         .switchMap(({ featureCollection }) => {
             console.log('==> mergeAsLayerEpic');
-            console.log('featuresWantToAddLayer:', featureCollection);
+            console.log('layer add to panel:', featureCollection);
             return Rx.Observable.of(
                 addLayer({
                     type: 'vector',

@@ -1,13 +1,3 @@
-import {
-    BUFFER_DO_BUFFER,
-    BUFFER_ADD_AS_LAYER,
-    loading,
-    addAsLayer,
-    fetchGeoJsonFailure,
-    setLayer,
-    setRadius
-} from '../actions/buffer'
-
 import React from "react";
 import Rx from "rxjs";
 import uuidv1 from "uuid/v1";
@@ -17,6 +7,16 @@ import { toCQLFilter } from "../../../../../client/utils/FilterUtils";
 import turfBuffer from "@turf/buffer";
 import axios from "../../../../libs/ajax";
 import { featureCollection } from "@turf/helpers";
+// Actions
+import {
+    BUFFER_DO_BUFFER,
+    BUFFER_ADD_AS_LAYER,
+    loading,
+    addAsLayer,
+    fetchGeoJsonFailure,
+    setLayer,
+    setRadius
+} from '../actions/buffer'
 
 // เพื่อกระจาย features ออกจาก features array ถ้าเป็น Annotation features <- อาจมีอย่างอื่นด้วย เช่น Measurement
 const spreadFeatures = (layerSelected) => {
@@ -30,7 +30,7 @@ const spreadFeatures = (layerSelected) => {
     return featuresArray;
 };
 
-let layerTitle = "";
+let layerTitle = ""; // เพื่อเอาไปใช้ต่อกับ addAsBufferedLayerEpic
 const loadFeature = function (layerSelected) {
     if (!layerSelected) {
         return (dispatch) => {
@@ -96,8 +96,6 @@ const loadFeature = function (layerSelected) {
         // ถ้า layer นี้มี features ใน Client Side
         if (layerSelected.features) {
             console.log("layerTitle", layerTitle);
-            // Promise for Turf
-            // new Promise((resolve, reject) => {
             let featuresGeoJson;
             if (layerTitle === "Annotations")
                 featuresGeoJson = spreadFeatures(layerSelected);
@@ -106,7 +104,7 @@ const loadFeature = function (layerSelected) {
 
             let featuresCollectionGeoJson = featureCollection(featuresGeoJson);
             let result = bufferWithTurf(featuresCollectionGeoJson);
-            console.log('result', result)
+            console.log('result of turf', result)
             if (result === undefined) return;
 
             dispatch(addAsLayer(result));
@@ -115,7 +113,6 @@ const loadFeature = function (layerSelected) {
 
         } else { // ถ้าไม่มี features layer อยู่ใน client จะทำการ get
             const DEFAULT_API = "https://geonode.longdo.com/geoserver/wfs";
-            // Promise for Turf
             new Promise((resolve, reject) => {
                 let params = {
                     service: "WFS",
@@ -164,7 +161,7 @@ export const doBufferEpic = (action$, { getState = () => { } }) =>
             return Rx.Observable.from([loadFeature(layerSelected)]);
         });
 
-// ส่วน Add_As_Layer ที่ buffer แล้วมาเพิ่มใน layers panel ด้านซ้ายกับวาดลงแผนที่
+// epic ที่ buffer แล้วมาเพิ่มใน layers panel ด้านซ้ายกับวาดลงแผนที่
 export const addAsBufferedLayerEpic = (action$) =>
     action$.ofType(BUFFER_ADD_AS_LAYER)
         .switchMap(({ bufferedFtCollection }) => {

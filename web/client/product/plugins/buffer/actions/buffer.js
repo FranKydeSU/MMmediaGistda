@@ -59,7 +59,6 @@ export const fetchGeoJsonFailure = function (error) {
     };
 };
 
-// const toggleBufferTool = toggleControl.bind(null, "buffer", null);
 export const toggleBufferTool = () => {
     return {
         type: TOGGLE_CONTROL,

@@ -37,7 +37,7 @@ import Message from "../../components/I18N/Message";
 createControlEnabledSelector("buffer");
 
 const bufferSelector = (state) => get(state, "controls.buffer.enabled");
-
+// เอา layer node แยกออกมาจาก layersGroups ด้วย groupsSelector
 const layerNodesExtracter = (groups) => {
     const layerNode = [];
     groups.map((groupNode) => {
@@ -46,7 +46,6 @@ const layerNodesExtracter = (groups) => {
     return layerNode;
 };
 
-// -------------------------------------Selector--------------------------------------
 const selector = (state) => {
     return {
         layerIndex: state.buffer.layerIndex,
@@ -141,7 +140,7 @@ class BufferDialog extends React.Component {
         return this.props.show ? (
             <Dialog
                 Dialog
-                id="measure-dialog"
+                id="buffer-dialog"
                 style={this?.dialogStyle}
                 start={this?.start}
             >
@@ -206,7 +205,7 @@ class BufferDialog extends React.Component {
                         <br />
                         {this.props.loading ? (
                             <button
-                                key="buffer-save"
+                                key="buffer-loading"
                                 className="btn btn-longdo-outline-info"
                                 style={{ minWidth: "100px" }}
                                 disabled
@@ -225,7 +224,7 @@ class BufferDialog extends React.Component {
                         )}
 
                         <button
-                            key="clear-routing"
+                            key="buffer-clear"
                             onClick={this.onReset}
                             className="btn btn-longdo-outline"
                             style={{

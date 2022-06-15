@@ -32,17 +32,20 @@ class ExportGeoJsonButton extends React.Component {
     render() {
         return (
             <>
-                {
-                    (this.props.selectedLayers[0].name === 'BufferedLayer' || this.props.selectedLayers[0].name === "MergeLayer") && !this.props.settings.expanded && !this.props.layerMetadata.expanded ?
+                {(this.props.selectedLayers[0].name === 'BufferedLayer'
+                    || this.props.selectedLayers[0].name === "MergeLayer")
+                    && !this.props.settings.expanded
+                    && !this.props.layerMetadata.expanded ?
                     <OverlayTrigger
-                    key="exportGeoJsonTool"
-                    placement="top"
-                    overlay={<Tooltip id="toc-tooltip-downloadTool"><Message msgId="toc.toolExportGeoJsonTooltip" /></Tooltip>}>
-                    <Button bsStyle={this.props.layerdownload.expanded ? "success" : "primary"} className="square-button-md" onClick={this.downloadGeoJson}>
-                        <Glyphicon glyph="download" />
-                    </Button>
-                </OverlayTrigger>
-                : null   }
+                        key="exportGeoJsonTool"
+                        placement="top"
+                        overlay={<Tooltip id="toc-tooltip-downloadTool"><Message msgId="toc.toolExportGeoJsonTooltip" /></Tooltip>}>
+                        <Button bsStyle={this.props.layerdownload.expanded ? "success" : "primary"} className="square-button-md" onClick={this.downloadGeoJson}>
+                            <Glyphicon glyph="download" />
+                        </Button>
+                    </OverlayTrigger>
+                    : null
+                }
             </>
         )
     }

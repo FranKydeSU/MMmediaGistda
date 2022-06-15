@@ -36,8 +36,7 @@ import {
 createControlEnabledSelector("mergelyr");
 
 const mergeLayerSelector = (state) => get(state, 'controls.mergelyr.enabled');
-
-// กรอง layer จาก groupNode
+// เอา layer node แยกออกมาจาก layersGroups ด้วย groupsSelector
 const layerNodesExtracter = (groups) => {
     const layerNode = [];
     groups.map(groupNode => {
@@ -46,7 +45,6 @@ const layerNodesExtracter = (groups) => {
     return layerNode;
 };
 
-// -------------------------------------Selector--------------------------------------
 const selector = (state) => {
     return {
         layerIndex1: state.mergelyr.layerIndex1,
@@ -88,6 +86,18 @@ class MergeLayerComponent extends React.Component {
         onReset: () => { }
     }
 
+    dialogStyle = {
+        position: 'fixed',
+        top: '0px',
+        left: '0px',
+        width: '500px',
+    };
+
+    start = {
+        x: (window.innerWidth - 600) * 0.5,
+        y: (window.innerHeight - 100) * 0.5
+    }
+
     onClose = () => {
         this.props.onClose(false);
     };
@@ -115,18 +125,25 @@ class MergeLayerComponent extends React.Component {
                 {/* เอาไว้ debug ดู layer ทั้งหมด */}
                 {console.log('ALL_LAYERS: ', this.props.allLayers)}
                 <div key="header" role="header">
-                    <Glyphicon glyph="folder-open" />&nbsp;<Message msgId="mergeLayerPlugin.title" />
-                    <button key="close" onClick={this.onClose} className="close"><Glyphicon glyph="1-close" /></button>
+                    <Glyphicon glyph="folder-open" />
+                    &nbsp;<Message msgId="mergeLayerPlugin.title" />
+                    <button key="close" onClick={this.onClose} className="close">
+                        <Glyphicon glyph="1-close" />
+                    </button>
                 </div>
                 <div key="body" role="body">
-                    <p><Message msgId="mergeLayerPlugin.layerLabel1" /></p>
+                    <p>
+                        <Message msgId="mergeLayerPlugin.layerLabel1" />
+                    </p>
                     <LayerSelector
                         responses={this.props.layersNode}
                         index={this.props.layerIndex1}
                         setIndex={this.onChangeLayer1}
                     ></LayerSelector>
                     <br />
-                    <p><Message msgId="mergeLayerPlugin.layerLabel2" /></p>
+                    <p>
+                        <Message msgId="mergeLayerPlugin.layerLabel2" />
+                    </p>
                     <LayerSelector
                         responses={this.props.layersNode}
                         index={this.props.layerIndex2}
@@ -136,30 +153,27 @@ class MergeLayerComponent extends React.Component {
                     <div
                         style={{
                             display: "flex"
-                        }}>
-
-                        {
-                            this.props.loading ?
-                                <button
-                                    key="mergelayer-merge"
-                                    className="btn btn-longdo-outline-info"
-                                    style={{ minWidth: "100px" }}
-                                    disabled
-                                >
-                                    <Message msgId="mergeLayerPlugin.loading" />
-                                </button>
-                                :
-                                <button
-                                    key="mergelayer-merge"
-                                    // onClick={this?.onSearch}
-                                    className="btn btn-longdo-outline-info"
-                                    style={{ minWidth: "100px" }}
-                                    // id="find-route"
-                                    onClick={this.onDoMerge}
-                                >
-                                    <Message msgId="mergeLayerPlugin.button" />
-                                </button>
-                        }
+                        }}
+                    >
+                        {this.props.loading ? (
+                            <button
+                                key="mergelayer-merge"
+                                className="btn btn-longdo-outline-info"
+                                style={{ minWidth: "100px" }}
+                                disabled
+                            >
+                                <Message msgId="mergeLayerPlugin.loading" />
+                            </button>
+                        ) : (
+                            <button
+                                key="mergelayer-merge"
+                                className="btn btn-longdo-outline-info"
+                                style={{ minWidth: "100px" }}
+                                onClick={this.onDoMerge}
+                            >
+                                <Message msgId="mergeLayerPlugin.button" />
+                            </button>
+                        )}
 
                         <button
                             key="clear-mergelayer"
@@ -172,13 +186,13 @@ class MergeLayerComponent extends React.Component {
                         >
                             <Message msgId="mergeLayerPlugin.resetButton" />
                         </button>
-
-                        {this.props.error === "succeed" ? (
-                            <p style={{ color: "green" }}><Message msgId="mergeLayerPlugin.successText" /></p>
-                        ) : (
-                            <p style={{ color: "red" }}>{this.props.error}</p>
-                        )}
                     </div>
+                    <br />
+                    {this.props.error === "succeed" ? (
+                        <span style={{ color: "green" }}><Message msgId="mergeLayerPlugin.successText" /></span>
+                    ) : (
+                        <span style={{ color: "red" }}>{this.props.error}</span>
+                    )}
 
                 </div>
             </Dialog >

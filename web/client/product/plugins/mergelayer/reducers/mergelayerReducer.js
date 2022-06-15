@@ -1,4 +1,5 @@
 import assign from 'object-assign';
+// Actions
 import {
     MERGELYR_SET_LAYER_1,
     MERGELYR_SET_LAYER_2,

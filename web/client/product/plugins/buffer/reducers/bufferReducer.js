@@ -1,3 +1,6 @@
+import assign from "object-assign";
+
+// Actions
 import {
     BUFFER_SET_LAYER,
     BUFFER_SET_RADIUS,
@@ -6,8 +9,6 @@ import {
     BUFFER_FETCH_FAILURE,
     TOGGLE_CONTROL,
 } from '../actions/buffer'
-
-import assign from "object-assign";
 
 const defaultState = {
     radius: 1,
